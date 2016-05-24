@@ -1,0 +1,7 @@
+[Core]
+Name = Discord
+Module = discordb
+
+[Documentation]
+Description = This is a backend implementation for discord.
+
