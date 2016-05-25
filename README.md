@@ -1,8 +1,8 @@
-[Work in progress, this is unusable at the moment.]
-
 This is a backend for Discord (http://discordapp.com) for errbot (http://errbot.io).
 
-It allows you to use errbot from Discord.
+It allows you to use errbot from Discord but it is a work in progress.
+
+**This project is in need of a regular user of Discord familiar with Python to take it under his/her wing!**
 
 It is Python 3.4+ only.
 
