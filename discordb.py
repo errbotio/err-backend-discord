@@ -1,17 +1,41 @@
-from errbot.backends.base import Identifier
+from errbot.backends.base import Person
 from errbot.errBot import ErrBot
 import logging
-import time
 import sys
-from errbot.rendering import md
 import discord
 
 # Can't use __name__ because of Yapsy
 log = logging.getLogger('errbot.backends.discord')
 
 
-class DiscordIdentifier(Identifier):
-    pass
+class DiscordPerson(discord.User, Person):
+
+    def __init__(self, name=None, id_=None, discriminator=None, avatar=None):
+        super().__init__(name=name, id=id_, discriminator=discriminator, avatar=avatar)
+
+    @property
+    def person(self) -> str:
+        return self.discriminator
+
+    @property
+    def aclattr(self) -> str:
+        return self.id
+
+    @property
+    def nick(self) -> str:
+        return self.name
+
+    @property
+    def fullname(self) -> str:
+        return self.name
+
+    @property
+    def client(self) -> str:
+        return None
+
+    @staticmethod
+    def from_discord(user: discord.User):
+        return DiscordPerson(user.name, user.id, user.discriminator, user.avatar)
 
 
 class DiscordBackend(ErrBot):
@@ -35,9 +59,14 @@ class DiscordBackend(ErrBot):
         self.bot_identifier = None
 
         self.client = discord.Client()
+        self.on_ready = self.client.event(self.on_ready)
+
+    async def on_ready(self):
+        log.debug('Logged in as %s, %s' % (self.client.user.name, self.client.user.id))
+        self.bot_identifier = DiscordPerson.from_discord(self.client.user)
 
     def build_identifier(self, strrep):
-        return DiscordIdentifier()
+        return DiscordPerson(strrep, None, None, None)
 
     def query_room(self, room):
         # TODO: maybe we can query the room resource only
