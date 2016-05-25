@@ -23,11 +23,12 @@ to your config.py
 
 ## Authentication
 
-Create an app and a bot user in 'https://discordapp.com/developers/applications' like:
+Create a bot user then you can directly user the email and password of the bot user.
 
 ```
 BOT_IDENTITY = {
-    'token' : 'MTg5NzMwMjA4MTYxMTR2ODgw.CiYq-A.Su1ghlljJUYnrvgKDdxdRm0al0Y'
+    'email' : 'bot@domaine.tld'
+    'password' : 'changeme'
 }
 ```
 
