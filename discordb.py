@@ -107,6 +107,7 @@ class DiscordBackend(ErrBot):
         self.client = discord.Client()
         self.on_ready = self.client.event(self.on_ready)
         self.on_message = self.client.event(self.on_message)
+        self.on_status = self.client.event(self.on_status)
 
     async def on_ready(self):
         log.debug('Logged in as %s, %s' % (self.client.user.name, self.client.user.id))
@@ -129,6 +130,10 @@ class DiscordBackend(ErrBot):
             self.callback_mention(err_msg,
                                   [DiscordRoomOccupant.from_user_and_channel(mention, msg.channel)
                                    for mention in msg.mentions])
+
+    async def on_status(self, member, old_game, old_status):
+        pass
+
 
     def build_identifier(self, strrep: str):
         """
@@ -188,23 +193,33 @@ class DiscordBackend(ErrBot):
 
     def serve_once(self):
         self.connect_callback()
+        # Hehe client.run cannot be used as we need more control.
         try:
-            self.client.run(self.email, self.password)
+            self.client.loop.run_until_complete(self.client.start(self.email, self.password))
         except KeyboardInterrupt:
-            log.info("Interrupt received, shutting down..")
-            return True
-        finally:
+            self.client.loop.run_until_complete(self.client.logout())
+            pending = asyncio.Task.all_tasks()
+            gathered = asyncio.gather(*pending)
+            try:
+                gathered.cancel()
+                self.client.loop.run_until_complete(gathered)
+
+                # we want to retrieve any exceptions to make sure that
+                # they don't nag us about it being un-retrieved.
+                gathered.exception()
+            except:
+                pass
             self.disconnect_callback()
+            return True
 
     def change_presence(self, status, message):
         log.warn("Presence is not implemented on the discord backend.")
-        pass
 
     def prefix_groupchat_reply(self, message, identifier):
         message.body = '@{0} {1}'.format(identifier.nick, message.body)
 
     def rooms(self):
-        return None
+        return [DiscordRoom(channel.name) for channel in self.client.get_all_channels()]
 
     @property
     def mode(self):
