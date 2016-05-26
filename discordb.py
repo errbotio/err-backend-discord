@@ -13,8 +13,8 @@ log = logging.getLogger('errbot.backends.discord')
 
 class DiscordPerson(discord.User, Person):
 
-    def __init__(self, name=None, id_=None, discriminator=None, avatar=None):
-        super().__init__(name=name, id=id_, discriminator=discriminator, avatar=avatar)
+    def __init__(self, username=None, id_=None, discriminator=None, avatar=None):
+        super().__init__(username=username, id=id_, discriminator=discriminator, avatar=avatar)
 
     @property
     def person(self) -> str:
@@ -40,6 +40,9 @@ class DiscordPerson(discord.User, Person):
     def from_user(user: discord.User):
         return DiscordPerson(user.name, user.id, user.discriminator, user.avatar)
 
+    def __eq__(self, other):
+        return isinstance(other, DiscordPerson) and other.person == self.person
+
 
 class DiscordRoom(Room):
     def __init__(self, name, channel: discord.Channel=None):
@@ -52,10 +55,16 @@ class DiscordRoom(Room):
             raise ValueError('You cannot build a Room from a private channel')
         return DiscordRoom(channel.name, channel)
 
+    def __str__(self):
+        return '#' + self.name
+
+    def __eq__(self, other):
+        return other.name == self.name
+
 
 class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
-    def __init__(self, name=None, id_=None, discriminator=None, avatar=None, room: DiscordRoom=None):
-        super().__init__(name=name, id_=id_, discriminator=discriminator, avatar=avatar)
+    def __init__(self, username=None, id_=None, discriminator=None, avatar=None, room: DiscordRoom=None):
+        super().__init__(username=username, id_=id_, discriminator=discriminator, avatar=avatar)
         self._room = room
 
     @property
@@ -64,11 +73,17 @@ class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
 
     @staticmethod
     def from_user_and_channel(user: discord.User, channel: discord.Channel):
-        return DiscordRoomOccupant(name=user.name,
+        return DiscordRoomOccupant(username=user.name,
                                    id_ =user.id,
                                    discriminator=user.discriminator,
                                    avatar=user.avatar,
                                    room=DiscordRoom.from_channel(channel))
+
+    def __eq__(self, other):
+        return isinstance(other, DiscordRoomOccupant) and str(other) == str(self)
+
+    def __str__(self):
+        return super().__str__() + '@' + self._room.name
 
 
 class DiscordBackend(ErrBot):
@@ -101,22 +116,62 @@ class DiscordBackend(ErrBot):
 
     async def on_message(self, msg: discord.Message):
         err_msg = Message(msg.content)
-        err_msg.to = DiscordRoom.from_channel(msg.channel)
-        err_msg.frm = DiscordRoomOccupant.from_user_and_channel(msg.author, msg.channel)
+        if msg.channel.is_private:
+            err_msg.frm = DiscordPerson.from_user(msg.author)
+            err_msg.to = self.bot_identifier
+        else:
+            err_msg.to = DiscordRoom.from_channel(msg.channel)
+            err_msg.frm = DiscordRoomOccupant.from_user_and_channel(msg.author, msg.channel)
 
         log.debug('Received message %s' % msg)
         self.callback_message(err_msg)
 
-    def build_identifier(self, strrep):
-        return DiscordPerson(strrep, None, None, None)
+    def build_identifier(self, strrep: str):
+        """
+        Valid forms of strreps:
+
+        user#discriminator@room -> RoomOccupant
+        user#discriminator      -> Person
+        user@room               -> (Ambiguous) RoomOccupant
+        user                    -> (Ambiguous) Person
+        #room                   -> Room
+
+        :param strrep:
+        :return:
+        """
+        if not strrep:
+            raise ValueError('Empty strrep')
+
+        if strrep.startswith('#'):
+            return DiscordRoom(strrep[1:])
+
+        if '@' in strrep:
+            user_and_discrim, room = strrep.split('@')
+        else:
+            user_and_discrim = strrep
+            room = None
+
+        if '#' in user_and_discrim:
+            user, discriminator = user_and_discrim.split('#')
+        else:
+            user = user_and_discrim
+            discriminator = None
+
+        if room:
+            return DiscordRoomOccupant(username=user, discriminator=discriminator, room=DiscordRoom(room))
+
+        return DiscordPerson(username=user, discriminator=discriminator)
 
     def query_room(self, room):
-        # TODO: maybe we can query the room resource only
-        return None
+        return self.build_identifier(room)  # backward compatibility.
 
     def send_message(self, msg):
         log.debug('Send:\n%s\nto %s' % (msg.body, msg.to))
-        self.client.loop.create_task(self.client.send_message(destination=msg.to.room.channel, content=msg.body))
+        if msg.is_direct:
+            co = self.client.send_message(destination=msg.to, content=msg.body)
+        else:
+            co = self.client.send_message(destination=msg.to.room.channel, content=msg.body)
+        self.client.loop.create_task(co)
         super().send_message(msg)
 
     def build_reply(self, mess, text=None, private=False):
