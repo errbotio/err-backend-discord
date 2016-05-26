@@ -125,6 +125,10 @@ class DiscordBackend(ErrBot):
 
         log.debug('Received message %s' % msg)
         self.callback_message(err_msg)
+        if msg.mentions:
+            self.callback_mention(err_msg,
+                                  [DiscordRoomOccupant.from_user_and_channel(mention, msg.channel)
+                                   for mention in msg.mentions])
 
     def build_identifier(self, strrep: str):
         """
