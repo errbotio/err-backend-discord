@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, List
 
-from errbot.backends.base import Person, Message, Room, RoomOccupant
+from errbot.backends.base import Person, Message, Room, RoomOccupant, Presence, ONLINE, OFFLINE, AWAY
 from errbot.errBot import ErrBot
 import logging
 import sys
@@ -45,6 +45,41 @@ class DiscordPerson(discord.User, Person):
 
 
 class DiscordRoom(Room):
+    def invite(self, *args) -> None:
+        log.error('Not implemented')
+
+    @property
+    def joined(self) -> bool:
+        log.error('Not implemented')
+        return True
+
+    def leave(self, reason: str = None) -> None:
+        log.error('Not implemented')
+
+    def create(self) -> None:
+        log.error('Not implemented')
+
+    def destroy(self) -> None:
+        log.error('Not implemented')
+
+    def join(self, username: str = None, password: str = None) -> None:
+        log.error('Not implemented')
+
+    @property
+    def topic(self) -> str:
+        log.error('Not implemented')
+        return ''
+
+    @property
+    def occupants(self) -> List[RoomOccupant]:
+        log.error('Not implemented')
+        return []
+
+    @property
+    def exists(self) -> bool:
+        log.error('Not implemented')
+        return True
+
     def __init__(self, name, channel: discord.Channel=None):
         self.name = name
         self.channel = channel
@@ -79,6 +114,14 @@ class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
                                    avatar=user.avatar,
                                    room=DiscordRoom.from_channel(channel))
 
+    @staticmethod
+    def from_user_and_room(user: discord.User, room: DiscordRoom):
+        return DiscordRoomOccupant(username=user.name,
+                                   id_ =user.id,
+                                   discriminator=user.discriminator,
+                                   avatar=user.avatar,
+                                   room=room)
+
     def __eq__(self, other):
         return isinstance(other, DiscordRoomOccupant) and str(other) == str(self)
 
@@ -107,7 +150,7 @@ class DiscordBackend(ErrBot):
         self.client = discord.Client()
         self.on_ready = self.client.event(self.on_ready)
         self.on_message = self.client.event(self.on_message)
-        self.on_status = self.client.event(self.on_status)
+        self.on_member_update = self.client.event(self.on_member_update)
 
     async def on_ready(self):
         log.debug('Logged in as %s, %s' % (self.client.user.name, self.client.user.id))
@@ -131,9 +174,19 @@ class DiscordBackend(ErrBot):
                                   [DiscordRoomOccupant.from_user_and_channel(mention, msg.channel)
                                    for mention in msg.mentions])
 
-    async def on_status(self, member, old_game, old_status):
-        pass
-
+    async def on_member_update(self, before, after):
+        if before.status != after.status:
+            person = DiscordPerson.from_user(after)
+            if after.status == discord.Status.online:
+                self.callback_presence(Presence(person, ONLINE))
+                return
+            elif after.status == discord.Status.offline:
+                self.callback_presence(Presence(person, OFFLINE))
+                return
+            elif after.status == discord.Status.idle:
+                self.callback_presence(Presence(person, AWAY))
+                return
+        log.debug('Unrocognized member update, ignoring...')
 
     def build_identifier(self, strrep: str):
         """
@@ -179,16 +232,18 @@ class DiscordBackend(ErrBot):
         if msg.is_direct:
             co = self.client.send_message(destination=msg.to, content=msg.body)
         else:
-            co = self.client.send_message(destination=msg.to.room.channel, content=msg.body)
+            co = self.client.send_message(destination=msg.to.channel, content=msg.body)
         self.client.loop.create_task(co)
         super().send_message(msg)
 
     def build_reply(self, mess, text=None, private=False):
         response = self.build_message(text)
-        response.frm = mess.to
-        response.to = mess.frm
-        if private:
-            response.to = self.build_identifier(mess.frm.nick)
+        if mess.is_direct:
+            response.frm = self.bot_identifier
+            response.to = mess.frm
+        else:
+            response.frm = DiscordRoomOccupant.from_user_and_room(self.bot_identifier, response.to)
+            response.to = DiscordPerson.from_user(mess.frm) if private else mess.to
         return response
 
     def serve_once(self):
