@@ -23,12 +23,12 @@ to your config.py
 
 ## Authentication
 
-Create a bot user then you can directly user the email and password of the bot user.
+Create a bot user then you can directly use the token of the bot user.  
+For further information about getting a bot user into a server please see: https://discordapp.com/developers/docs/topics/oauth2
 
 ```
 BOT_IDENTITY = {
-    'email' : 'bot@domaine.tld'
-    'password' : 'changeme'
+    'token' : 'changeme'
 }
 ```
 

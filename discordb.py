@@ -10,7 +10,6 @@ import asyncio
 # Can't use __name__ because of Yapsy
 log = logging.getLogger('errbot.backends.discord')
 
-
 class DiscordPerson(discord.User, Person):
 
     def __init__(self, username=None, id_=None, discriminator=None, avatar=None):
@@ -138,12 +137,11 @@ class DiscordBackend(ErrBot):
         super().__init__(config)
         identity = config.BOT_IDENTITY
 
-        self.email = identity.get('email', None)
-        self.password = identity.get('password', None)
+        self.token = identity.get('token', None)
         self.rooms_to_join = config.CHATROOM_PRESENCE
 
-        if not self.email or not self.password:
-            log.fatal('You need to set a email and a password entry in the BOT_IDENTITY setting of your configuration.')
+        if not self.token:
+            log.fatal('You need to set a token entry in the BOT_IDENTITY setting of your configuration.')
             sys.exit(1)
         self.bot_identifier = None
 
@@ -152,13 +150,15 @@ class DiscordBackend(ErrBot):
         self.on_message = self.client.event(self.on_message)
         self.on_member_update = self.client.event(self.on_member_update)
 
-    async def on_ready(self):
+    @asyncio.coroutine
+    def on_ready(self):
         log.debug('Logged in as %s, %s' % (self.client.user.name, self.client.user.id))
         self.bot_identifier = DiscordPerson.from_user(self.client.user)
         for channel in self.client.get_all_channels():
             log.debug('Found channel: %s', channel)
 
-    async def on_message(self, msg: discord.Message):
+    @asyncio.coroutine
+    def on_message(self, msg: discord.Message):
         err_msg = Message(msg.content)
         if msg.channel.is_private:
             err_msg.frm = DiscordPerson.from_user(msg.author)
@@ -174,7 +174,8 @@ class DiscordBackend(ErrBot):
                                   [DiscordRoomOccupant.from_user_and_channel(mention, msg.channel)
                                    for mention in msg.mentions])
 
-    async def on_member_update(self, before, after):
+    @asyncio.coroutine
+    def on_member_update(self, before, after):
         if before.status != after.status:
             person = DiscordPerson.from_user(after)
             if after.status == discord.Status.online:
@@ -229,11 +230,17 @@ class DiscordBackend(ErrBot):
 
     def send_message(self, msg):
         log.debug('Send:\n%s\nto %s' % (msg.body, msg.to))
+
         if msg.is_direct:
-            co = self.client.send_message(destination=msg.to, content=msg.body)
+            recipient = msg.to
         else:
-            co = self.client.send_message(destination=msg.to.channel, content=msg.body)
-        self.client.loop.create_task(co)
+            if msg.to.channel is None:
+                msg.to.channel = discord.utils.get(self.client.get_all_channels(), name=msg.to.name)
+            recipient = msg.to.channel
+
+        self.client.loop.create_task(self.client.send_typing(recipient))
+        self.client.loop.create_task(self.client.send_message(destination=recipient, content=msg.body))
+
         super().send_message(msg)
 
     def build_reply(self, mess, text=None, private=False):
@@ -250,7 +257,7 @@ class DiscordBackend(ErrBot):
         self.connect_callback()
         # Hehe client.run cannot be used as we need more control.
         try:
-            self.client.loop.run_until_complete(self.client.start(self.email, self.password))
+            self.client.loop.run_until_complete(self.client.start(self.token))
         except KeyboardInterrupt:
             self.client.loop.run_until_complete(self.client.logout())
             pending = asyncio.Task.all_tasks()
