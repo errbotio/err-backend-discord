@@ -275,7 +275,8 @@ class DiscordBackend(ErrBot):
             return True
 
     def change_presence(self, status, message):
-        log.warn("Presence is not implemented on the discord backend.")
+        log.debug('Presence changed to %s and game "%s".' % (status, message))
+        self.client.change_presence(status=status, game=message)
 
     def prefix_groupchat_reply(self, message, identifier):
         message.body = '@{0} {1}'.format(identifier.nick, message.body)
