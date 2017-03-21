@@ -237,11 +237,11 @@ class DiscordBackend(ErrBot):
             if msg.to.channel is None:
                 msg.to.channel = discord.utils.get(self.client.get_all_channels(), name=msg.to.name)
             recipient = msg.to.channel
+        for message in [msg.body[i:i+2000] for i in range(0, len(msg.body), 2000)]:
+            self.client.loop.create_task(self.client.send_typing(recipient))
+            self.client.loop.create_task(self.client.send_message(destination=recipient, content=message))
 
-        self.client.loop.create_task(self.client.send_typing(recipient))
-        self.client.loop.create_task(self.client.send_message(destination=recipient, content=msg.body))
-
-        super().send_message(msg)
+            super().send_message(msg)
 
     def build_reply(self, mess, text=None, private=False):
         response = self.build_message(text)
