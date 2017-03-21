@@ -1,6 +1,6 @@
 from typing import Any, List
 
-from errbot.backends.base import Person, Message, Room, RoomOccupant, Presence, ONLINE, OFFLINE, AWAY
+from errbot.backends.base import Person, Message, Room, RoomOccupant, Presence, ONLINE, OFFLINE, AWAY, DND
 from errbot.errBot import ErrBot
 import logging
 import sys
@@ -180,14 +180,14 @@ class DiscordBackend(ErrBot):
             person = DiscordPerson.from_user(after)
             if after.status == discord.Status.online:
                 self.callback_presence(Presence(person, ONLINE))
-                return
             elif after.status == discord.Status.offline:
                 self.callback_presence(Presence(person, OFFLINE))
-                return
             elif after.status == discord.Status.idle:
                 self.callback_presence(Presence(person, AWAY))
-                return
-        log.debug('Unrocognized member update, ignoring...')
+            elif after.status == discord.Status.dnd:
+                self.callback_presence(Presence(person, DND))
+        else:
+            log.debug('Unrocognized member update, ignoring...')
 
     def build_identifier(self, strrep: str):
         """
