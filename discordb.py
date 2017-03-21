@@ -178,6 +178,7 @@ class DiscordBackend(ErrBot):
     def on_member_update(self, before, after):
         if before.status != after.status:
             person = DiscordPerson.from_user(after)
+            log.debug('Person %s changed status to %s from %s' % (person, after.status, before.status))
             if after.status == discord.Status.online:
                 self.callback_presence(Presence(person, ONLINE))
             elif after.status == discord.Status.offline:
