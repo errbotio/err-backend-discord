@@ -243,6 +243,9 @@ class DiscordBackend(ErrBot):
 
         super().send_message(msg)
 
+    def send_card(self, card):
+        self.debug('Discord backend does not render cards.')
+
     def build_reply(self, mess, text=None, private=False):
         response = self.build_message(text)
         if mess.is_direct:
