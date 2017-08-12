@@ -243,7 +243,7 @@ class DiscordBackend(ErrBot):
 
         super().send_message(msg)
 
-    def build_reply(self, mess, text=None, private=False):
+    def build_reply(self, mess, text=None, private=False, threaded=False):
         response = self.build_message(text)
         if mess.is_direct:
             response.frm = self.bot_identifier
