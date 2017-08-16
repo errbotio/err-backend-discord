@@ -19,18 +19,20 @@ BACKEND = 'Discord'
 BOT_EXTRA_BACKEND_DIR = '/path_to/err-backend-discord'
 ```
 
-to your config.py
+to your `config.py`
 
 ## Authentication
 
-Create a bot user then you can directly use the token of the bot user.  
-For further information about getting a bot user into a server please see: https://discordapp.com/developers/docs/topics/oauth2
+Create an application, then a bot user and you can directly use the token of the bot user in your `config.py`:
 
 ```
 BOT_IDENTITY = {
     'token' : 'changeme'
 }
 ```
+
+For further information about getting a bot user into a server please see: https://discordapp.com/developers/docs/topics/oauth2. You can use [this tool](https://discordapi.com/permissions.html) to generate a proper invitation link.
+
 
 ## Contributing
 
