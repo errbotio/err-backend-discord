@@ -1,6 +1,6 @@
 from typing import Any, List
 
-from errbot.backends.base import Person, Message, Room, RoomOccupant, Presence, ONLINE, OFFLINE, AWAY
+from errbot.backends.base import Person, Message, Room, RoomOccupant, Presence, ONLINE, OFFLINE, AWAY, DND
 from errbot.errBot import ErrBot
 import logging
 import sys
@@ -178,16 +178,17 @@ class DiscordBackend(ErrBot):
     def on_member_update(self, before, after):
         if before.status != after.status:
             person = DiscordPerson.from_user(after)
+            log.debug('Person %s changed status to %s from %s' % (person, after.status, before.status))
             if after.status == discord.Status.online:
                 self.callback_presence(Presence(person, ONLINE))
-                return
             elif after.status == discord.Status.offline:
                 self.callback_presence(Presence(person, OFFLINE))
-                return
             elif after.status == discord.Status.idle:
                 self.callback_presence(Presence(person, AWAY))
-                return
-        log.debug('Unrocognized member update, ignoring...')
+            elif after.status == discord.Status.dnd:
+                self.callback_presence(Presence(person, DND))
+        else:
+            log.debug('Unrocognized member update, ignoring...')
 
     def build_identifier(self, strrep: str):
         """
@@ -237,11 +238,11 @@ class DiscordBackend(ErrBot):
             if msg.to.channel is None:
                 msg.to.channel = discord.utils.get(self.client.get_all_channels(), name=msg.to.name)
             recipient = msg.to.channel
+        for message in [msg.body[i:i+2000] for i in range(0, len(msg.body), 2000)]:
+            self.client.loop.create_task(self.client.send_typing(recipient))
+            self.client.loop.create_task(self.client.send_message(destination=recipient, content=message))
 
-        self.client.loop.create_task(self.client.send_typing(recipient))
-        self.client.loop.create_task(self.client.send_message(destination=recipient, content=msg.body))
-
-        super().send_message(msg)
+            super().send_message(msg)
 
     def send_card(self, card):
         log.debug('Discord backend does not render cards.')
@@ -278,7 +279,8 @@ class DiscordBackend(ErrBot):
             return True
 
     def change_presence(self, status, message):
-        log.warn("Presence is not implemented on the discord backend.")
+        log.debug('Presence changed to %s and game "%s".' % (status, message))
+        self.client.change_presence(status=status, game=message)
 
     def prefix_groupchat_reply(self, message, identifier):
         message.body = '@{0} {1}'.format(identifier.nick, message.body)
