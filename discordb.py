@@ -10,6 +10,8 @@ import asyncio
 # Can't use __name__ because of Yapsy
 log = logging.getLogger('errbot.backends.discord')
 
+DISCORD_MESSAGE_SIZE_LIMIT = 2000
+
 class DiscordPerson(discord.User, Person):
 
     def __init__(self, username=None, id_=None, discriminator=None, avatar=None):
@@ -238,7 +240,7 @@ class DiscordBackend(ErrBot):
             if msg.to.channel is None:
                 msg.to.channel = discord.utils.get(self.client.get_all_channels(), name=msg.to.name)
             recipient = msg.to.channel
-        for message in [msg.body[i:i+2000] for i in range(0, len(msg.body), 2000)]:
+        for message in [msg.body[i:i+DISCORD_MESSAGE_SIZE_LIMIT] for i in range(0, len(msg.body), DISCORD_MESSAGE_SIZE_LIMIT)]:
             self.client.loop.create_task(self.client.send_typing(recipient))
             self.client.loop.create_task(self.client.send_message(destination=recipient, content=message))
 
