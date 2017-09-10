@@ -249,8 +249,8 @@ class DiscordBackend(ErrBot):
     def send_card(self, card):
         log.debug('Discord backend does not render cards.')
 
-    def build_reply(self, mess, text=None, private=False, threading=False):
-        log.debug('Threading is %s' % threading)
+    def build_reply(self, mess, text=None, private=False, threaded=False):
+        log.debug('Threading is %s' % threaded)
         response = self.build_message(text)
         if mess.is_direct:
             response.frm = self.bot_identifier
