@@ -9,7 +9,7 @@ It is Python 3.4+ only.
 ## Installation
 
 ```
-git checkout https://github.com/gbin/err-backend-discord.git
+git clone https://github.com/gbin/err-backend-discord.git
 ```
 
 and add:
