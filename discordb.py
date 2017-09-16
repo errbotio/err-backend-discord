@@ -10,7 +10,17 @@ import asyncio
 # Can't use __name__ because of Yapsy
 log = logging.getLogger('errbot.backends.discord')
 
+# Discord message size limit.
 DISCORD_MESSAGE_SIZE_LIMIT = 2000
+
+COLORS = {
+    'red': 0xFF0000,
+    'green': 0x008000,
+    'yellow': 0xFFA500,
+    'blue': 0x0000FF,
+    'white': 0xFFFFFF,
+    'cyan': 0x00FFFF
+}  # Discord doesn't know its colors
 
 class DiscordPerson(discord.User, Person):
 
@@ -247,7 +257,32 @@ class DiscordBackend(ErrBot):
             super().send_message(msg)
 
     def send_card(self, card):
-        log.debug('Discord backend does not render cards.')
+        if isinstance(card.to, RoomOccupant):
+            card.to = card.to.room
+
+        recipient = discord.utils.get(self.client.get_all_channels(), name=card.to.name)
+
+        if card.color:
+            color = COLORS[card.color] if card.color in COLORS else int(card.color.replace('#', '0x'), 16)
+        else:
+            color = None
+
+        em = discord.Embed(title=card.title, description=card.summary, color=color)
+
+        if card.image:
+            em.set_image(url=card.image)
+
+        if card.thumbnail:
+            em.set_thumbnail(url=card.thumbnail)
+
+        if card.fields:
+            for key, value in card.fields:
+                em.add_field(name=key, value=value, inline=True)
+
+        self.client.loop.create_task(self.client.send_typing(recipient))
+        self.client.loop.create_task(self.client.send_message(destination=recipient, embed=em))
+        # in tests : check if card format is ok (i.e. if Embed.to_dict is as excepted)
+
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
         log.debug('Threading is %s' % threaded)
