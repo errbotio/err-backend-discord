@@ -267,6 +267,7 @@ class DiscordBackend(ErrBot):
         else:
             color = None
 
+        # Create Embed object
         em = discord.Embed(title=card.title, description=card.summary, color=color)
 
         if card.image:
@@ -281,7 +282,6 @@ class DiscordBackend(ErrBot):
 
         self.client.loop.create_task(self.client.send_typing(recipient))
         self.client.loop.create_task(self.client.send_message(destination=recipient, embed=em))
-        # in tests : check if card format is ok (i.e. if Embed.to_dict is as excepted)
 
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
