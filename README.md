@@ -1,3 +1,5 @@
+[![Updates](https://pyup.io/repos/github/gbin/err-backend-discord/shield.svg)](https://pyup.io/repos/github/gbin/err-backend-discord/)
+
 This is a backend for Discord (http://discordapp.com) for errbot (http://errbot.io).
 
 It allows you to use errbot from Discord but it is a work in progress.
