@@ -251,8 +251,8 @@ class DiscordBackend(ErrBot):
                 msg.to.channel = discord.utils.get(self.client.get_all_channels(), name=msg.to.name)
             recipient = msg.to.channel
         for message in [msg.body[i:i+DISCORD_MESSAGE_SIZE_LIMIT] for i in range(0, len(msg.body), DISCORD_MESSAGE_SIZE_LIMIT)]:
-            self.client.loop.create_task(self.client.send_typing(recipient))
-            self.client.loop.create_task(self.client.send_message(destination=recipient, content=message))
+            asyncio.run_coroutine_threadsafe(self.client.send_typing(recipient), loop=self.client.loop)
+            asyncio.run_coroutine_threadsafe(self.client.send_message(destination=recipient, content=message), loop=self.client.loop)
 
             super().send_message(msg)
 
@@ -280,8 +280,8 @@ class DiscordBackend(ErrBot):
             for key, value in card.fields:
                 em.add_field(name=key, value=value, inline=True)
 
-        self.client.loop.create_task(self.client.send_typing(recipient))
-        self.client.loop.create_task(self.client.send_message(destination=recipient, embed=em))
+        asyncio.run_coroutine_threadsafe(self.client.send_typing(recipient), loop=self.client.loop)
+        asyncio.run_coroutine_threadsafe(self.client.send_message(destination=recipient, embed=em), loop=self.client.loop)
 
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
