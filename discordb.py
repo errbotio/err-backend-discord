@@ -102,7 +102,7 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
 
     @property
     def aclattr(self) -> str:
-        return self._user_id
+        return self.fullname
 
     async def send(self, content: str = None, embed: discord.Embed = None):
         await self.discord_user.send(content=content, embed=embed)
@@ -426,7 +426,7 @@ class DiscordBackend(ErrBot):
         return DiscordRoom(self.client, room_name, self.client.guilds[0].id)
 
     def send_message(self, msg: Message):
-        log.debug('{} -> {}'.format(msg.frm, msg.to))
+        #log.debug('{} -> {}'.format(msg.frm, msg.to))
 
         recipient = msg.to
 
