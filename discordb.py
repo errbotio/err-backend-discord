@@ -48,12 +48,12 @@ class DiscordSender(ABC):
 class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
 
     @classmethod
-    def username_and_discriminator_to_userid(cls, dc: discord.client, username: str, discriminator: str) -> str:
-        return find(lambda m: m.name == username and m.discriminator == discriminator, dc.get_all_members())
+    def username_and_discriminator_to_userid(cls, username: str, discriminator: str) -> str:
+        return find(lambda m: m.name == username and m.discriminator == discriminator, DiscordBackend.client
+                    .get_all_members())
 
-    def __init__(self, dc: discord.client, user_id: str):
+    def __init__(self, user_id: str):
         self._user_id = user_id
-        self._dc = dc
 
     def get_discord_object(self) -> discord.abc.Messageable:
         return self.discord_user()
@@ -71,7 +71,7 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
         return self._user_id
 
     def discord_user(self) -> discord.User:
-        return self._dc.get_user(self._user_id)
+        return DiscordBackend.client.get_user(self._user_id)
 
     @property
     def username(self) -> str:
@@ -423,7 +423,7 @@ class DiscordBackend(ErrBot):
     async def on_ready(self):
         log.debug('Logged in as {}, {}'.format(DiscordBackend.client.user.name, DiscordBackend.client.user.id))
         if self.bot_identifier is None:
-            self.bot_identifier = DiscordPerson(DiscordBackend.client, DiscordBackend.client.user.id)
+            self.bot_identifier = DiscordPerson(DiscordBackend.client.user.id)
 
         for channel in DiscordBackend.client.get_all_channels():
             log.debug('Found channel: %s', channel)
@@ -432,7 +432,7 @@ class DiscordBackend(ErrBot):
         err_msg = Message(msg.content)
 
         if isinstance(msg.channel, discord.abc.PrivateChannel):
-            err_msg.frm = DiscordPerson(DiscordBackend.client, msg.author.id)
+            err_msg.frm = DiscordPerson(msg.author.id)
             err_msg.to = self.bot_identifier
         else:
             err_msg.to = DiscordRoom.from_id(DiscordBackend.client, msg.channel.id)
@@ -463,7 +463,7 @@ class DiscordBackend(ErrBot):
 
     async def on_member_update(self, before, after):
         if before.status != after.status:
-            person = DiscordPerson(DiscordBackend.client, after.id)
+            person = DiscordPerson(after.id)
 
             log.debug('Person %s changed status to %s from %s' % (person, after.status, before.status))
 
@@ -550,7 +550,7 @@ class DiscordBackend(ErrBot):
                 raise RuntimeError("Non-Direct messages must come from a room occupant")
 
             response.frm = DiscordRoomOccupant(DiscordBackend.client, self.bot_identifier.id, mess.frm.room.id)
-            response.to = DiscordPerson(DiscordBackend.client, mess.frm.id) if private else mess.to
+            response.to = DiscordPerson(mess.frm.id) if private else mess.to
         return response
 
     def serve_once(self):
@@ -609,6 +609,6 @@ class DiscordBackend(ErrBot):
         else:
             raise ValueError("No Discriminator")
 
-        user_id = DiscordPerson.username_and_discriminator_to_userid(DiscordBackend.client, user, discriminator)
+        user_id = DiscordPerson.username_and_discriminator_to_userid(user, discriminator)
 
-        return DiscordPerson(DiscordBackend.client, user_id=user_id)
+        return DiscordPerson(user_id=user_id)
