@@ -401,6 +401,8 @@ class DiscordBackend(ErrBot):
     This is the Discord backend for Errbot.
     """
 
+    client = None
+
     def __init__(self, config):
         super().__init__(config)
         identity = config.BOT_IDENTITY
@@ -413,28 +415,28 @@ class DiscordBackend(ErrBot):
             sys.exit(1)
         self.bot_identifier = None
 
-        self.client = discord.Client()
-        self.on_ready = self.client.event(self.on_ready)
-        self.on_message = self.client.event(self.on_message)
-        self.on_member_update = self.client.event(self.on_member_update)
+        DiscordBackend.client = discord.Client()
+        self.on_ready = DiscordBackend.client.event(self.on_ready)
+        self.on_message = DiscordBackend.client.event(self.on_message)
+        self.on_member_update = DiscordBackend.client.event(self.on_member_update)
 
     async def on_ready(self):
-        log.debug('Logged in as {}, {}'.format(self.client.user.name, self.client.user.id))
+        log.debug('Logged in as {}, {}'.format(DiscordBackend.client.user.name, DiscordBackend.client.user.id))
         if self.bot_identifier is None:
-            self.bot_identifier = DiscordPerson(self.client, self.client.user.id)
+            self.bot_identifier = DiscordPerson(DiscordBackend.client, DiscordBackend.client.user.id)
 
-        for channel in self.client.get_all_channels():
+        for channel in DiscordBackend.client.get_all_channels():
             log.debug('Found channel: %s', channel)
 
     async def on_message(self, msg: discord.Message):
         err_msg = Message(msg.content)
 
         if isinstance(msg.channel, discord.abc.PrivateChannel):
-            err_msg.frm = DiscordPerson(self.client, msg.author.id)
+            err_msg.frm = DiscordPerson(DiscordBackend.client, msg.author.id)
             err_msg.to = self.bot_identifier
         else:
-            err_msg.to = DiscordRoom.from_id(self.client, msg.channel.id)
-            err_msg.frm = DiscordRoomOccupant(self.client, msg.author.id, msg.channel.id)
+            err_msg.to = DiscordRoom.from_id(DiscordBackend.client, msg.channel.id)
+            err_msg.frm = DiscordRoomOccupant(DiscordBackend.client, msg.author.id, msg.channel.id)
 
         if self.process_message(err_msg):
             # Message contains a command
@@ -448,7 +450,7 @@ class DiscordBackend(ErrBot):
 
         if msg.mentions:
             self.callback_mention(err_msg,
-                                  [DiscordRoomOccupant(self.client, mention.id, msg.channel.id)
+                                  [DiscordRoomOccupant(DiscordBackend.client, mention.id, msg.channel.id)
                                    for mention in msg.mentions])
 
     def is_from_self(self, msg: Message) -> bool:
@@ -461,7 +463,7 @@ class DiscordBackend(ErrBot):
 
     async def on_member_update(self, before, after):
         if before.status != after.status:
-            person = DiscordPerson(self.client, after.id)
+            person = DiscordPerson(DiscordBackend.client, after.id)
 
             log.debug('Person %s changed status to %s from %s' % (person, after.status, before.status))
 
@@ -487,13 +489,13 @@ class DiscordBackend(ErrBot):
         :return:
         """
 
-        guild = self.client.guilds[0]
+        guild = DiscordBackend.client.guilds[0]
 
         room_name = room
         if room_name.startswith("##"):
-            return DiscordCategory(self.client, room_name[2:], guild.id)
+            return DiscordCategory(DiscordBackend.client, room_name[2:], guild.id)
         elif room_name.startswith("#"):
-            return DiscordRoom(self.client, room_name[1:], guild.id)
+            return DiscordRoom(DiscordBackend.client, room_name[1:], guild.id)
 
     def send_message(self, msg: Message):
         # log.debug('{} -> {}'.format(msg.frm, msg.to))
@@ -506,7 +508,7 @@ class DiscordBackend(ErrBot):
 
         for message in [msg.body[i:i + DISCORD_MESSAGE_SIZE_LIMIT] for i in
                         range(0, len(msg.body), DISCORD_MESSAGE_SIZE_LIMIT)]:
-            asyncio.run_coroutine_threadsafe(recipient.send(content=message), loop=self.client.loop)
+            asyncio.run_coroutine_threadsafe(recipient.send(content=message), loop=DiscordBackend.client.loop)
 
             super().send_message(msg)
 
@@ -535,7 +537,7 @@ class DiscordBackend(ErrBot):
             for key, value in card.fields:
                 em.add_field(name=key, value=value, inline=True)
 
-        asyncio.run_coroutine_threadsafe(recipient.send(embed=em), loop=self.client.loop).result(5)
+        asyncio.run_coroutine_threadsafe(recipient.send(embed=em), loop=DiscordBackend.client.loop).result(5)
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
         response = self.build_message(text)
@@ -547,23 +549,23 @@ class DiscordBackend(ErrBot):
             if not isinstance(mess.frm, DiscordRoomOccupant):
                 raise RuntimeError("Non-Direct messages must come from a room occupant")
 
-            response.frm = DiscordRoomOccupant(self.client, self.bot_identifier.id, mess.frm.room.id)
-            response.to = DiscordPerson(self.client, mess.frm.id) if private else mess.to
+            response.frm = DiscordRoomOccupant(DiscordBackend.client, self.bot_identifier.id, mess.frm.room.id)
+            response.to = DiscordPerson(DiscordBackend.client, mess.frm.id) if private else mess.to
         return response
 
     def serve_once(self):
         self.connect_callback()
         # client.run cannot be used as we need more control.
         try:
-            self.client.loop.run_until_complete(self.client.start(self.token))
+            DiscordBackend.client.loop.run_until_complete(DiscordBackend.client.start(self.token))
         except KeyboardInterrupt:
-            self.client.loop.run_until_complete(self.client.logout())
+            DiscordBackend.client.loop.run_until_complete(DiscordBackend.client.logout())
             pending = asyncio.Task.all_tasks()
             gathered = asyncio.gather(*pending)
             # noinspection PyBroadException
             try:
                 gathered.cancel()
-                self.client.loop.run_until_complete(gathered)
+                DiscordBackend.client.loop.run_until_complete(gathered)
 
                 # we want to retrieve any exceptions to make sure that
                 # they don't nag us about it being un-retrieved.
@@ -576,13 +578,13 @@ class DiscordBackend(ErrBot):
     def change_presence(self, status: str = ONLINE, message: str = ''):
         log.debug('Presence changed to %s and activity "%s".' % (status, message))
         activity = discord.Activity(name=message)
-        self.client.change_presence(status=status, activity=activity)
+        DiscordBackend.client.change_presence(status=status, activity=activity)
 
     def prefix_groupchat_reply(self, message, identifier: Person):
         message.body = '@{0} {1}'.format(identifier.nick, message.body)
 
     def rooms(self):
-        return [DiscordRoom.from_id(self.client, channel.id) for channel in self.client.get_all_channels()]
+        return [DiscordRoom.from_id(DiscordBackend.client, channel.id) for channel in DiscordBackend.client.get_all_channels()]
 
     @property
     def mode(self):
@@ -607,6 +609,6 @@ class DiscordBackend(ErrBot):
         else:
             raise ValueError("No Discriminator")
 
-        user_id = DiscordPerson.username_and_discriminator_to_userid(self.client, user, discriminator)
+        user_id = DiscordPerson.username_and_discriminator_to_userid(DiscordBackend.client, user, discriminator)
 
-        return DiscordPerson(self.client, user_id=user_id)
+        return DiscordPerson(DiscordBackend.client, user_id=user_id)
