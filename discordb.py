@@ -23,7 +23,7 @@ except ImportError:
     sys.exit(1)
 
 # Discord message size limit.
-DISCORD_MESSAGE_SIZE_LIMIT = 2000
+DISCORD_MESSAGE_SIZE_LIMIT = 4096
 
 COLOURS = {
     'red': 0xFF0000,
@@ -41,7 +41,7 @@ class DiscordSender(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_discord_messenger(self) -> discord.abc.Messageable:
+    def get_discord_object(self) -> discord.abc.Messageable:
         raise NotImplementedError
 
 
@@ -55,8 +55,8 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
         self._user_id = user_id
         self._dc = dc
 
-    def get_discord_messenger(self) -> discord.abc.Messageable:
-        return self.discord_user
+    def get_discord_object(self) -> discord.abc.Messageable:
+        return self.discord_user()
 
     @property
     def created_at(self):
@@ -70,14 +70,13 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
     def id(self) -> str:
         return self._user_id
 
-    @property
     def discord_user(self) -> discord.User:
         return self._dc.get_user(self._user_id)
 
     @property
     def username(self) -> str:
         """Convert a Discord user ID to their user name"""
-        user = self.discord_user
+        user = self.discord_user()
 
         if user is None:
             log.error('Cannot find user with ID %s', self._user_id)
@@ -93,7 +92,7 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
 
     @property
     def fullname(self) -> Optional[str]:
-        usr = self.discord_user
+        usr = self.discord_user()
 
         if usr is None:
             return None
@@ -105,7 +104,7 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
         return self.fullname
 
     async def send(self, content: str = None, embed: discord.Embed = None):
-        await self.discord_user.send(content=content, embed=embed)
+        await self.discord_user().send(content=content, embed=embed)
 
     def __eq__(self, other):
         return isinstance(other, DiscordPerson) and other.aclattr == self.aclattr
@@ -121,27 +120,6 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
     1. They exist and we have a channel_id of that room
     2. They don't currently exist and we have a channel name and guild
     """
-
-    @classmethod
-    def channel_name_to_id(cls, dc: discord.client, name: str, guild_id: str):
-        """
-        Channel names are non-unique across Discord. Hence we require a guild name to uniquely identify a room id
-
-        :param dc: Discord client object
-        :param name: room name
-        :param guild_id: Guild name
-        :return: ID of the room
-        """
-        matching = [channel for channel in dc.get_all_channels() if name == channel.name
-                    and channel.guild.id == guild_id]
-
-        if len(matching) == 0:
-            return None
-
-        if len(matching) > 1:
-            log.warning("Multiple matching channels for channel name {} in guild id {}".format(name, guild_id))
-
-        return matching[0].id
 
     @classmethod
     def from_id(cls, dc: discord.client, channel_id):
@@ -163,14 +141,33 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         self._dc = dc
 
         if dc.get_guild(guild_id) is None:
-            raise ValueError("Can't find guild id {} to create DiscordRoom".format(guild_id))
+            raise ValueError("Can't find guild id {} to init DiscordRoom".format(guild_id))
 
         self._guild_id = guild_id
         self._channel_name = channel_name
-        self._channel_id = self.channel_name_to_id(dc, channel_name, guild_id)  # Can be None if channel doesn't exist
+        self._channel_id = self.channel_name_to_id()  # Can be None if channel doesn't exist
 
-    def get_discord_messenger(self):
-        return self.discord_channel
+    def get_discord_object(self):
+        return self.discord_channel()
+
+    def channel_name_to_id(self):
+        """
+        Channel names are non-unique across Discord. Hence we require a guild name to uniquely identify a room id
+
+        :return: ID of the room
+        """
+        matching = [channel for channel in self._dc.get_all_channels() if self._channel_name == channel.name
+                    and channel.guild.id == self._guild_id
+                    and isinstance(channel, discord.TextChannel)]
+
+        if len(matching) == 0:
+            return None
+
+        if len(matching) > 1:
+            log.warning("Multiple matching channels for channel name {} in guild id {}"
+                        .format(self._channel_name, self._guild_id))
+
+        return matching[0].id
 
     @property
     def created_at(self):
@@ -185,7 +182,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
                 raise RuntimeError("Can't invite non Discord Users")
 
             asyncio.run_coroutine_threadsafe(
-                self.discord_channel.set_permissions(identifier.discord_user, read_messages=True),
+                self.discord_channel().set_permissions(identifier.discord_user(), read_messages=True),
                 loop=self._dc.loop)
 
     @property
@@ -215,10 +212,15 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
             log.warning("Trying to create an already existing channel {}".format(self._channel_name))
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(self.create_room(), loop=self._dc.loop)
+        asyncio.run_coroutine_threadsafe(self.create_room(), loop=self._dc.loop).result(timeout=5)
 
     def destroy(self) -> None:
-        asyncio.run_coroutine_threadsafe(self.discord_channel.delete(reason="Bot deletion command"), loop=self._dc.loop)
+        if not self.exists:
+            log.warning("Trying to destory a non-existing channel {}".format(self._channel_name))
+            raise RoomError("Room doesn't exist")
+
+        asyncio.run_coroutine_threadsafe(self.discord_channel().delete(reason="Bot deletion command"),
+                                         loop=self._dc.loop).result(timeout=5)
 
     def join(self, username: str = None, password: str = None) -> None:
         """
@@ -234,7 +236,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         if not self.exists:
             return ""
 
-        topic = self.discord_channel.topic
+        topic = self.discord_channel().topic
         topic = "" if topic is None else topic
 
         return topic
@@ -245,7 +247,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
             return []
 
         occupants = []
-        for member in self.discord_channel.members:
+        for member in self.discord_channel().members:
             occupants.append(DiscordRoomOccupant(self._dc, member.id, self._channel_id))
 
         return occupants
@@ -284,18 +286,17 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         """
         return self._channel_id
 
-    @property
     def discord_channel(self) -> Optional[Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]]:
         return self._dc.get_channel(self._channel_id)
 
     async def send(self, content: str = None, embed: discord.Embed = None):
         if not self.exists:
             raise RuntimeError("Can't send a message on a non-existent channel")
-        if not isinstance(self.discord_channel, discord.abc.Messageable):
+        if not isinstance(self.discord_channel(), discord.abc.Messageable):
             raise RuntimeError("Channel {}[id:{}] doesn't support sending text messages"
                                .format(self.name, self._channel_id))
 
-        await self.discord_channel.send(content=content, embed=embed)
+        await self.discord_channel().send(content=content, embed=embed)
 
     def __str__(self):
         return '#' + self.name
@@ -306,6 +307,69 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
         return other.id is not None and self.id is not None \
                and other.id == self.id
+
+
+class DiscordCategory(DiscordRoom, Room):
+
+    def channel_name_to_id(self):
+        """
+        Channel names are non-unique across Discord. Hence we require a guild name to uniquely identify a room id
+
+        :return: ID of the room
+        """
+        matching = [channel for channel in self._dc.get_all_channels() if self._channel_name == channel.name
+                    and channel.guild.id == self._guild_id
+                    and isinstance(channel, discord.CategoryChannel)]
+
+        if len(matching) == 0:
+            return None
+
+        if len(matching) > 1:
+            log.warning("Multiple matching channels for channel name {} in guild id {}"
+                        .format(self._channel_name, self._guild_id))
+
+        return matching[0].id
+
+    def create_subchannel(self, name: str) -> DiscordRoom:
+        category = self.get_discord_object()
+
+        if not isinstance(category, discord.CategoryChannel):
+            raise RuntimeError("Category is not a discord category object")
+
+        text_channel = asyncio.run_coroutine_threadsafe(category.create_text_channel(name), loop=self._dc.loop).result(
+            timeout=5)
+
+        return DiscordRoom.from_id(self._dc, text_channel.id)
+
+    async def create_room(self):
+        guild = self._dc.get_guild(self._guild_id)
+
+        channel = await guild.create_category(self._channel_name)
+
+        log.info("Created category {} in guild {}".format(self._channel_name, guild.name))
+
+        self._channel_id = channel.id
+
+    def join(self, username: str = None, password: str = None) -> None:
+        raise RuntimeError("Can't join categories")
+
+    def leave(self, reason: str = None) -> None:
+        raise RuntimeError("Can't leave categories")
+
+    @property
+    def joined(self) -> bool:
+        raise RuntimeError("Can't join categories")
+
+    @property
+    def topic(self) -> str:
+        raise RuntimeError("Can't set category topic")
+
+    @property
+    def occupants(self) -> List[RoomOccupant]:
+        raise NotImplementedError("Not implemented yet")
+
+    def invite(self, *args) -> None:
+        raise RuntimeError("Can't invite to categories")
 
 
 class DiscordRoomOccupant(DiscordPerson, RoomOccupant, DiscordSender, discord.abc.Snowflake):
@@ -379,7 +443,7 @@ class DiscordBackend(ErrBot):
             if not isinstance(recipient, DiscordSender):
                 raise ValueError("Message object from is not a DiscordSender")
 
-            async with recipient.get_discord_messenger().typing():
+            async with recipient.get_discord_object().typing():
                 self._dispatch_to_plugins('callback_message', err_msg)
 
         if msg.mentions:
@@ -414,19 +478,25 @@ class DiscordBackend(ErrBot):
 
     def query_room(self, room):
         """
-        Major hacky function. we just implicitly assume we're just in one guild server
+        Major hacky function. we just implicitly assume we're just in one guild server.
+
+        ##category -> a category
+        #room -> Creates a room
 
         :param room:
         :return:
         """
-        room_name = room
-        if room_name.startswith("#"):
-            room_name = room_name[1:]
 
-        return DiscordRoom(self.client, room_name, self.client.guilds[0].id)
+        guild = self.client.guilds[0]
+
+        room_name = room
+        if room_name.startswith("##"):
+            return DiscordCategory(self.client, room_name[2:], guild.id)
+        elif room_name.startswith("#"):
+            return DiscordRoom(self.client, room_name[1:], guild.id)
 
     def send_message(self, msg: Message):
-        #log.debug('{} -> {}'.format(msg.frm, msg.to))
+        # log.debug('{} -> {}'.format(msg.frm, msg.to))
 
         recipient = msg.to
 
@@ -465,7 +535,7 @@ class DiscordBackend(ErrBot):
             for key, value in card.fields:
                 em.add_field(name=key, value=value, inline=True)
 
-        asyncio.run_coroutine_threadsafe(recipient.send(embed=em), loop=self.client.loop)
+        asyncio.run_coroutine_threadsafe(recipient.send(embed=em), loop=self.client.loop).result(5)
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
         response = self.build_message(text)
