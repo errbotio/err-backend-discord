@@ -246,7 +246,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
         occupants = []
         for member in self.discord_channel().members:
-            occupants.append(DiscordRoomOccupant(DiscordBackend.client, member.id, self._channel_id))
+            occupants.append(DiscordRoomOccupant(member.id, self._channel_id))
 
         return occupants
 
@@ -315,7 +315,7 @@ class DiscordCategory(DiscordRoom, Room):
 
         :return: ID of the room
         """
-        matching = [channel for channel in self._dc.get_all_channels() if self._channel_name == channel.name
+        matching = [channel for channel in DiscordBackend.client.get_all_channels() if self._channel_name == channel.name
                     and channel.guild.id == self._guild_id
                     and isinstance(channel, discord.CategoryChannel)]
 
@@ -334,13 +334,13 @@ class DiscordCategory(DiscordRoom, Room):
         if not isinstance(category, discord.CategoryChannel):
             raise RuntimeError("Category is not a discord category object")
 
-        text_channel = asyncio.run_coroutine_threadsafe(category.create_text_channel(name), loop=self._dc.loop).result(
-            timeout=5)
+        text_channel = asyncio.run_coroutine_threadsafe(category.create_text_channel(name),
+                                                        loop=DiscordBackend.client.loop).result(timeout=5)
 
         return DiscordRoom.from_id(text_channel.id)
 
     async def create_room(self):
-        guild = self._dc.get_guild(self._guild_id)
+        guild = DiscordBackend.client.get_guild(self._guild_id)
 
         channel = await guild.create_category(self._channel_name)
 
@@ -372,11 +372,10 @@ class DiscordCategory(DiscordRoom, Room):
 
 class DiscordRoomOccupant(DiscordPerson, RoomOccupant, DiscordSender, discord.abc.Snowflake):
 
-    def __init__(self, dc: discord.Client, user_id: str, channel_id: str):
-        super().__init__(dc, user_id)
+    def __init__(self, user_id: str, channel_id: str):
+        super().__init__(user_id)
 
         self._channel = DiscordRoom.from_id(channel_id)
-        self._dc = dc
 
     @property
     def room(self) -> DiscordRoom:
@@ -434,7 +433,7 @@ class DiscordBackend(ErrBot):
             err_msg.to = self.bot_identifier
         else:
             err_msg.to = DiscordRoom.from_id(msg.channel.id)
-            err_msg.frm = DiscordRoomOccupant(DiscordBackend.client, msg.author.id, msg.channel.id)
+            err_msg.frm = DiscordRoomOccupant(msg.author.id, msg.channel.id)
 
         if self.process_message(err_msg):
             # Message contains a command
@@ -448,7 +447,7 @@ class DiscordBackend(ErrBot):
 
         if msg.mentions:
             self.callback_mention(err_msg,
-                                  [DiscordRoomOccupant(DiscordBackend.client, mention.id, msg.channel.id)
+                                  [DiscordRoomOccupant(mention.id, msg.channel.id)
                                    for mention in msg.mentions])
 
     def is_from_self(self, msg: Message) -> bool:
@@ -547,7 +546,7 @@ class DiscordBackend(ErrBot):
             if not isinstance(mess.frm, DiscordRoomOccupant):
                 raise RuntimeError("Non-Direct messages must come from a room occupant")
 
-            response.frm = DiscordRoomOccupant(DiscordBackend.client, self.bot_identifier.id, mess.frm.room.id)
+            response.frm = DiscordRoomOccupant(self.bot_identifier.id, mess.frm.room.id)
             response.to = DiscordPerson(mess.frm.id) if private else mess.to
         return response
 
