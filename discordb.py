@@ -122,25 +122,23 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
     """
 
     @classmethod
-    def from_id(cls, dc: discord.client, channel_id):
-        channel = dc.get_channel(channel_id)
+    def from_id(cls, channel_id):
+        channel = DiscordBackend.client.get_channel(channel_id)
         if channel is None:
             raise ValueError("Channel id:{} doesn't exist!".format(channel_id))
 
-        return cls(dc, channel.name, channel.guild.id)
+        return cls(channel.name, channel.guild.id)
 
-    def __init__(self, dc: discord.Client, channel_name: str, guild_id: str):
+    def __init__(self, channel_name: str, guild_id: str):
         """
         Allows to specify an existing room (via name + guild or via id) or allows the creation of a future room by
         specifying a name and guild to create the channel in.
 
-        :param dc:
         :param channel_name:
         :param guild_id:
         """
-        self._dc = dc
 
-        if dc.get_guild(guild_id) is None:
+        if DiscordBackend.client.get_guild(guild_id) is None:
             raise ValueError("Can't find guild id {} to init DiscordRoom".format(guild_id))
 
         self._guild_id = guild_id
@@ -156,7 +154,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
         :return: ID of the room
         """
-        matching = [channel for channel in self._dc.get_all_channels() if self._channel_name == channel.name
+        matching = [channel for channel in DiscordBackend.client.get_all_channels() if self._channel_name == channel.name
                     and channel.guild.id == self._guild_id
                     and isinstance(channel, discord.TextChannel)]
 
@@ -183,7 +181,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
             asyncio.run_coroutine_threadsafe(
                 self.discord_channel().set_permissions(identifier.discord_user(), read_messages=True),
-                loop=self._dc.loop)
+                loop=DiscordBackend.client.loop)
 
     @property
     def joined(self) -> bool:
@@ -199,7 +197,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         log.error('Not implemented')
 
     async def create_room(self):
-        guild = self._dc.get_guild(self._guild_id)
+        guild = DiscordBackend.client.get_guild(self._guild_id)
 
         channel = await guild.create_text_channel(self._channel_name)
 
@@ -212,7 +210,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
             log.warning("Trying to create an already existing channel {}".format(self._channel_name))
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(self.create_room(), loop=self._dc.loop).result(timeout=5)
+        asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordBackend.client.loop).result(timeout=5)
 
     def destroy(self) -> None:
         if not self.exists:
@@ -220,7 +218,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
             raise RoomError("Room doesn't exist")
 
         asyncio.run_coroutine_threadsafe(self.discord_channel().delete(reason="Bot deletion command"),
-                                         loop=self._dc.loop).result(timeout=5)
+                                         loop=DiscordBackend.client.loop).result(timeout=5)
 
     def join(self, username: str = None, password: str = None) -> None:
         """
@@ -248,13 +246,13 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
         occupants = []
         for member in self.discord_channel().members:
-            occupants.append(DiscordRoomOccupant(self._dc, member.id, self._channel_id))
+            occupants.append(DiscordRoomOccupant(DiscordBackend.client, member.id, self._channel_id))
 
         return occupants
 
     @property
     def exists(self) -> bool:
-        return self._channel_id is not None and self._dc.get_channel(self._channel_id) is not None
+        return self._channel_id is not None and DiscordBackend.client.get_channel(self._channel_id) is not None
 
     @property
     def guild(self):
@@ -275,7 +273,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         if self._channel_id is None:
             return self._channel_name
         else:
-            self._channel_name = self._dc.get_channel(self._channel_id).name
+            self._channel_name = DiscordBackend.client.get_channel(self._channel_id).name
             return self._channel_name
 
     @property
@@ -287,7 +285,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         return self._channel_id
 
     def discord_channel(self) -> Optional[Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]]:
-        return self._dc.get_channel(self._channel_id)
+        return DiscordBackend.client.get_channel(self._channel_id)
 
     async def send(self, content: str = None, embed: discord.Embed = None):
         if not self.exists:
@@ -339,7 +337,7 @@ class DiscordCategory(DiscordRoom, Room):
         text_channel = asyncio.run_coroutine_threadsafe(category.create_text_channel(name), loop=self._dc.loop).result(
             timeout=5)
 
-        return DiscordRoom.from_id(self._dc, text_channel.id)
+        return DiscordRoom.from_id(text_channel.id)
 
     async def create_room(self):
         guild = self._dc.get_guild(self._guild_id)
@@ -377,7 +375,7 @@ class DiscordRoomOccupant(DiscordPerson, RoomOccupant, DiscordSender, discord.ab
     def __init__(self, dc: discord.Client, user_id: str, channel_id: str):
         super().__init__(dc, user_id)
 
-        self._channel = DiscordRoom.from_id(dc, channel_id)
+        self._channel = DiscordRoom.from_id(channel_id)
         self._dc = dc
 
     @property
@@ -435,7 +433,7 @@ class DiscordBackend(ErrBot):
             err_msg.frm = DiscordPerson(msg.author.id)
             err_msg.to = self.bot_identifier
         else:
-            err_msg.to = DiscordRoom.from_id(DiscordBackend.client, msg.channel.id)
+            err_msg.to = DiscordRoom.from_id(msg.channel.id)
             err_msg.frm = DiscordRoomOccupant(DiscordBackend.client, msg.author.id, msg.channel.id)
 
         if self.process_message(err_msg):
@@ -493,9 +491,9 @@ class DiscordBackend(ErrBot):
 
         room_name = room
         if room_name.startswith("##"):
-            return DiscordCategory(DiscordBackend.client, room_name[2:], guild.id)
+            return DiscordCategory(room_name[2:], guild.id)
         elif room_name.startswith("#"):
-            return DiscordRoom(DiscordBackend.client, room_name[1:], guild.id)
+            return DiscordRoom(room_name[1:], guild.id)
 
     def send_message(self, msg: Message):
         # log.debug('{} -> {}'.format(msg.frm, msg.to))
@@ -584,7 +582,7 @@ class DiscordBackend(ErrBot):
         message.body = '@{0} {1}'.format(identifier.nick, message.body)
 
     def rooms(self):
-        return [DiscordRoom.from_id(DiscordBackend.client, channel.id) for channel in DiscordBackend.client.get_all_channels()]
+        return [DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()]
 
     @property
     def mode(self):
