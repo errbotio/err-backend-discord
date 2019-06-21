@@ -297,7 +297,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         await self.discord_channel().send(content=content, embed=embed)
 
     def __str__(self):
-        return '#' + self.name
+        return "<#{}>".format(self.id)
 
     def __eq__(self, other: 'DiscordRoom'):
         if not isinstance(other, DiscordRoom):
