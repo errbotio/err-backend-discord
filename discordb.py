@@ -23,7 +23,7 @@ except ImportError:
     sys.exit(1)
 
 # Discord message size limit.
-DISCORD_MESSAGE_SIZE_LIMIT = 3000
+DISCORD_MESSAGE_SIZE_LIMIT = 2000
 
 COLOURS = {
     'red': 0xFF0000,
