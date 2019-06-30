@@ -610,6 +610,20 @@ class DiscordBackend(ErrBot):
 
         return DiscordPerson(user_id=user_id)
 
+    def upload_file(self, msg, filename):
+        if msg.is_direct:
+            log.debug('Sending file to user')
+            asyncio.run_coroutine_threadsafe(
+                self.client.send_file(DiscordPerson.from_user(msg.frm), filename),
+                loop=self.client.loop
+            )
+        else:
+            log.info('Sending file to channel')
+            asyncio.run_coroutine_threadsafe(
+                self.client.send_file(msg.to.channel, filename),
+                loop=self.client.loop
+            )
+
     def history(self, channelname, before=None):
         mychannel = discord.utils.get(self.client.get_all_channels(), name=channelname)
 
