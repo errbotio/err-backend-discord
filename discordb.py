@@ -23,7 +23,7 @@ except ImportError:
     sys.exit(1)
 
 # Discord message size limit.
-DISCORD_MESSAGE_SIZE_LIMIT = 4096
+DISCORD_MESSAGE_SIZE_LIMIT = 3000
 
 COLOURS = {
     'red': 0xFF0000,
@@ -426,6 +426,19 @@ class DiscordBackend(ErrBot):
         self.on_message = DiscordBackend.client.event(self.on_message)
         self.on_member_update = DiscordBackend.client.event(self.on_member_update)
 
+    @property
+    def message_limit(self):
+        """
+        Return the discord maximum message size.  If message size is set in the confiugration it
+        will be used otherwise the default backend size will be used.
+        """
+        try:
+            limit = min(int(self.bot_config.MESSAGE_SIZE_LIMIT), DISCORD_MESSAGE_SIZE_LIMIT)
+        except (AttributeError, ValueError) as e:
+            limit = DISCORD_MESSAGE_SIZE_LIMIT
+        log.debug(f"message size {limit}")
+        return limit
+
     async def on_ready(self):
         log.debug(
             f'Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}'
@@ -517,8 +530,8 @@ class DiscordBackend(ErrBot):
                 f"  Expected {DiscordSender} but got {type(recipient)}."
             )
 
-        for message in [msg.body[i:i + DISCORD_MESSAGE_SIZE_LIMIT] for i in
-                        range(0, len(msg.body), DISCORD_MESSAGE_SIZE_LIMIT)]:
+        for message in [msg.body[i:i + self.message_limit] for i in
+                        range(0, len(msg.body), self.message_limit)]:
             asyncio.run_coroutine_threadsafe(recipient.send(content=message), loop=DiscordBackend.client.loop)
 
             super().send_message(msg)
