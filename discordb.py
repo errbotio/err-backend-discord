@@ -79,7 +79,7 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
         user = self.discord_user()
 
         if user is None:
-            log.error('Cannot find user with ID %s', self._user_id)
+            log.error(f'Cannot find user with ID {self._user_id}')
             return f'<{self._user_id}>'
 
         return user.name
@@ -124,8 +124,9 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
     @classmethod
     def from_id(cls, channel_id):
         channel = DiscordBackend.client.get_channel(channel_id)
+
         if channel is None:
-            raise ValueError("Channel id:{} doesn't exist!".format(channel_id))
+            raise ValueError(f"Channel id:{channel_id} doesn't exist!")
 
         return cls(channel.name, channel.guild.id)
 
@@ -139,7 +140,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         """
 
         if DiscordBackend.client.get_guild(guild_id) is None:
-            raise ValueError("Can't find guild id {} to init DiscordRoom".format(guild_id))
+            raise ValueError(f"Can't find guild id {guild_id} to init DiscordRoom")
 
         self._guild_id = guild_id
         self._channel_name = channel_name
@@ -162,8 +163,10 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
             return None
 
         if len(matching) > 1:
-            log.warning("Multiple matching channels for channel name {} in guild id {}"
-                        .format(self._channel_name, self._guild_id))
+            log.warning(
+                "Multiple matching channels for channel"
+                f"name {self._channel_name} in guild id {self._guild_id}"
+            )
 
         return matching[0].id
 
@@ -201,20 +204,20 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
         channel = await guild.create_text_channel(self._channel_name)
 
-        log.info("Created channel {} in guild {}".format(self._channel_name, guild.name))
+        log.info(f"Created channel {self._channel_name} in guild {guild.name}")
 
         self._channel_id = channel.id
 
     def create(self) -> None:
         if self.exists:
-            log.warning("Trying to create an already existing channel {}".format(self._channel_name))
+            log.warning(f"Tried to create {self._channel_name} which already exists.")
             raise RoomError("Room exists")
 
         asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordBackend.client.loop).result(timeout=5)
 
     def destroy(self) -> None:
         if not self.exists:
-            log.warning("Trying to destory a non-existing channel {}".format(self._channel_name))
+            log.warning(f"Tried to destory {self._channel_name} which doesn't exist.")
             raise RoomError("Room doesn't exist")
 
         asyncio.run_coroutine_threadsafe(self.discord_channel().delete(reason="Bot deletion command"),
@@ -291,13 +294,14 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         if not self.exists:
             raise RuntimeError("Can't send a message on a non-existent channel")
         if not isinstance(self.discord_channel(), discord.abc.Messageable):
-            raise RuntimeError("Channel {}[id:{}] doesn't support sending text messages"
-                               .format(self.name, self._channel_id))
+            raise RuntimeError(
+                f"Channel {self.name}[id:{self._channel_id}] doesn't support sending text messages"
+            )
 
         await self.discord_channel().send(content=content, embed=embed)
 
     def __str__(self):
-        return "<#{}>".format(self.id)
+        return f"<#{self.id}>"
 
     def __eq__(self, other: 'DiscordRoom'):
         if not isinstance(other, DiscordRoom):
@@ -323,8 +327,10 @@ class DiscordCategory(DiscordRoom, Room):
             return None
 
         if len(matching) > 1:
-            log.warning("Multiple matching channels for channel name {} in guild id {}"
-                        .format(self._channel_name, self._guild_id))
+            log.warning(
+                "Multiple matching channels for channel name"
+                f" {self._channel_name} in guild id {self._guild_id}"
+            )
 
         return matching[0].id
 
@@ -344,7 +350,7 @@ class DiscordCategory(DiscordRoom, Room):
 
         channel = await guild.create_category(self._channel_name)
 
-        log.info("Created category {} in guild {}".format(self._channel_name, guild.name))
+        log.info(f"Created category {self._channel_name} in guild {guild.name}")
 
         self._channel_id = channel.id
 
@@ -390,7 +396,7 @@ class DiscordRoomOccupant(DiscordPerson, RoomOccupant, DiscordSender, discord.ab
                and other.room.id == self.room.id
 
     def __str__(self):
-        return super().__str__() + '@' + self._channel.name
+        return f"{super().__str__()}@{self._channel.name}"
 
 
 class DiscordBackend(ErrBot):
@@ -408,7 +414,10 @@ class DiscordBackend(ErrBot):
         self.rooms_to_join = config.CHATROOM_PRESENCE
 
         if not self.token:
-            log.fatal('You need to set a token entry in the BOT_IDENTITY setting of your configuration.')
+            log.fatal(
+                'You need to set a token entry in the BOT_IDENTITY'
+                ' setting of your configuration.'
+            )
             sys.exit(1)
         self.bot_identifier = None
 
@@ -418,12 +427,14 @@ class DiscordBackend(ErrBot):
         self.on_member_update = DiscordBackend.client.event(self.on_member_update)
 
     async def on_ready(self):
-        log.debug('Logged in as {}, {}'.format(DiscordBackend.client.user.name, DiscordBackend.client.user.id))
+        log.debug(
+            f'Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}'
+        )
         if self.bot_identifier is None:
             self.bot_identifier = DiscordPerson(DiscordBackend.client.user.id)
 
         for channel in DiscordBackend.client.get_all_channels():
-            log.debug('Found channel: %s', channel)
+            log.debug(f'Found channel: {channel}')
 
     async def on_message(self, msg: discord.Message):
         err_msg = Message(msg.content, extras=msg.embeds)
@@ -462,8 +473,9 @@ class DiscordBackend(ErrBot):
         if before.status != after.status:
             person = DiscordPerson(after.id)
 
-            log.debug('Person %s changed status to %s from %s' % (person, after.status, before.status))
-
+            log.debug(
+                f'Person {person} changed status to {after.status} from {before.status}'
+            )
             if after.status == discord.Status.online:
                 self.callback_presence(Presence(person, ONLINE))
             elif after.status == discord.Status.offline:
@@ -500,8 +512,10 @@ class DiscordBackend(ErrBot):
         recipient = msg.to
 
         if not isinstance(recipient, DiscordSender):
-            raise RuntimeError("{} doesn't support sending messages. Expected {} but got {}"
-                               .format(recipient, DiscordSender, type(recipient)))
+            raise RuntimeError(
+                f"{recipient} doesn't support sending messages."
+                f"  Expected {DiscordSender} but got {type(recipient)}."
+            )
 
         for message in [msg.body[i:i + DISCORD_MESSAGE_SIZE_LIMIT] for i in
                         range(0, len(msg.body), DISCORD_MESSAGE_SIZE_LIMIT)]:
@@ -513,8 +527,10 @@ class DiscordBackend(ErrBot):
         recipient = card.to
 
         if not isinstance(recipient, DiscordSender):
-            raise RuntimeError("{} doesn't support sending messages. Expected {} but got {}"
-                               .format(recipient, DiscordSender, type(recipient)))
+            raise RuntimeError(
+                f"{recipient} doesn't support sending messages."
+                f"  Expected {DiscordSender} but got {type(recipient)}"
+            )
 
         if card.color:
             color = COLOURS[card.color] if card.color in COLOURS else int(card.color.replace('#', '0x'), 16)
@@ -573,12 +589,12 @@ class DiscordBackend(ErrBot):
             return True
 
     def change_presence(self, status: str = ONLINE, message: str = ''):
-        log.debug('Presence changed to %s and activity "%s".' % (status, message))
+        log.debug(f'Presence changed to {status} and activity "{message}".')
         activity = discord.Activity(name=message)
         DiscordBackend.client.change_presence(status=status, activity=activity)
 
     def prefix_groupchat_reply(self, message, identifier: Person):
-        message.body = '@{0} {1}'.format(identifier.nick, message.body)
+        message.body = f'@{identifier.nick} {message.body}'
 
     def rooms(self):
         return [DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()]
