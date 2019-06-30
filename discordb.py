@@ -426,7 +426,7 @@ class DiscordBackend(ErrBot):
             log.debug('Found channel: %s', channel)
 
     async def on_message(self, msg: discord.Message):
-        err_msg = Message(msg.content)
+        err_msg = Message(msg.content, extras=msg.embeds)
 
         if isinstance(msg.channel, discord.abc.PrivateChannel):
             err_msg.frm = DiscordPerson(msg.author.id)
