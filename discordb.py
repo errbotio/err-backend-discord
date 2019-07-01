@@ -35,7 +35,7 @@ COLOURS = {
 }  # Discord doesn't know its colours
 
 
-class DiscordSender(ABC):
+class DiscordSender(ABC, discord.abc.Snowflake):
     @abstractmethod
     async def send(self, content: str = None, embed: discord.Embed = None):
         raise NotImplementedError
@@ -45,7 +45,7 @@ class DiscordSender(ABC):
         raise NotImplementedError
 
 
-class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
+class DiscordPerson(Person, DiscordSender):
 
     @classmethod
     def username_and_discriminator_to_userid(cls, username: str, discriminator: str) -> str:
@@ -113,7 +113,7 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
         return self.fullname
 
 
-class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
+class DiscordRoom(Room, DiscordSender):
     """
     DiscordRoom objects can be in two states:
 
@@ -376,7 +376,7 @@ class DiscordCategory(DiscordRoom, Room):
         raise RuntimeError("Can't invite to categories")
 
 
-class DiscordRoomOccupant(DiscordPerson, RoomOccupant, DiscordSender, discord.abc.Snowflake):
+class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
 
     def __init__(self, user_id: str, channel_id: str):
         super().__init__(user_id)
