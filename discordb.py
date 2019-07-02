@@ -311,7 +311,7 @@ class DiscordRoom(Room, DiscordSender):
                and other.id == self.id
 
 
-class DiscordCategory(DiscordRoom, Room):
+class DiscordCategory(DiscordRoom):
 
     def channel_name_to_id(self):
         """
