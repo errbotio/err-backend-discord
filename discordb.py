@@ -468,7 +468,6 @@ class DiscordBackend(ErrBot):
             limit = min(int(self.bot_config.MESSAGE_SIZE_LIMIT), DISCORD_MESSAGE_SIZE_LIMIT)
         except (AttributeError, ValueError) as e:
             limit = DISCORD_MESSAGE_SIZE_LIMIT
-        log.debug(f"message size {limit}")
         return limit
 
     async def on_error(self, event, *args, **kwargs):
@@ -560,10 +559,11 @@ class DiscordBackend(ErrBot):
             return DiscordRoom(room_name[1:], guild.id)
 
     def send_message(self, msg: Message):
+        super().send_message(msg)
+        log.debug("Enter send_message")
         for t in dir(msg):
-            if t.startswith("__"):
-                continue
-            log.debug(f'Message {t} {getattr(msg, t)}')
+            if not t.startswith("__"):
+                log.debug(f'Message {t} {getattr(msg, t)}')
 
         recipient = msg.to
 
@@ -579,8 +579,11 @@ class DiscordBackend(ErrBot):
                 recipient.send(content=message),
                 loop=DiscordBackend.client.loop
             )
+        log.debug("Exit send_message")
 
-            super().send_message(msg)
+    def send(self, identifier, text, in_reply_to=None, groupchat_nick_reply=False):
+        super().send(identifier, text, in_reply_to, groupchat_nick_reply)
+        log.debug("Discord Backend send() called.")
 
     def send_card(self, card):
         recipient = card.to
