@@ -422,9 +422,15 @@ class DiscordBackend(ErrBot):
         self.bot_identifier = None
 
         DiscordBackend.client = discord.Client()
-        self.on_ready = DiscordBackend.client.event(self.on_ready)
-        self.on_message = DiscordBackend.client.event(self.on_message)
-        self.on_member_update = DiscordBackend.client.event(self.on_member_update)
+        # Register discord event coroutines.
+        for fn in [
+            self.on_ready,
+            self.on_message,
+            self.on_member_update,
+            self.on_message_edit,
+            self.on_member_update
+        ]:
+            DiscordBackend.client.event(fn)
 
     @property
     def message_limit(self):
@@ -439,6 +445,11 @@ class DiscordBackend(ErrBot):
         log.debug(f"message size {limit}")
         return limit
 
+    async def on_error(self, event, *args, **kwargs):
+        super().on_error(event, *args, **kwargs)
+        # A stub entry in case special error handling is required.
+        pass
+
     async def on_ready(self):
         log.debug(
             f'Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}'
@@ -448,6 +459,9 @@ class DiscordBackend(ErrBot):
 
         for channel in DiscordBackend.client.get_all_channels():
             log.debug(f'Found channel: {channel}')
+
+    async def on_message_edit(self, before, after):
+        log.warning("Message editing not supported.")
 
     async def on_message(self, msg: discord.Message):
         err_msg = Message(msg.content, extras=msg.embeds)
