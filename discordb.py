@@ -37,7 +37,7 @@ COLOURS = {
 
 class DiscordSender(ABC, discord.abc.Snowflake):
     @abstractmethod
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         raise NotImplementedError
 
     @abstractmethod
@@ -49,8 +49,10 @@ class DiscordPerson(Person, DiscordSender):
 
     @classmethod
     def username_and_discriminator_to_userid(cls, username: str, discriminator: str) -> str:
-        return find(lambda m: m.name == username and m.discriminator == discriminator, DiscordBackend.client
-                    .get_all_members())
+        return find(
+            lambda m: m.name == username and m.discriminator == discriminator,
+            DiscordBackend.client.get_all_members()
+        )
 
     def __init__(self, user_id: str):
         self._user_id = user_id
@@ -103,7 +105,7 @@ class DiscordPerson(Person, DiscordSender):
     def aclattr(self) -> str:
         return self.fullname
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         await self.discord_user().send(content=content, embed=embed)
 
     def __eq__(self, other):
@@ -132,8 +134,8 @@ class DiscordRoom(Room, DiscordSender):
 
     def __init__(self, channel_name: str, guild_id: str):
         """
-        Allows to specify an existing room (via name + guild or via id) or allows the creation of a future room by
-        specifying a name and guild to create the channel in.
+        Allows to specify an existing room (via name + guild or via id) or allows the
+        creation of a future room by specifying a name and guild to create the channel in.
 
         :param channel_name:
         :param guild_id:
@@ -151,13 +153,17 @@ class DiscordRoom(Room, DiscordSender):
 
     def channel_name_to_id(self):
         """
-        Channel names are non-unique across Discord. Hence we require a guild name to uniquely identify a room id
+        Channel names are non-unique across Discord. Hence we require a guild name to uniquely
+        identify a room id
 
         :return: ID of the room
         """
-        matching = [channel for channel in DiscordBackend.client.get_all_channels() if self._channel_name == channel.name
-                    and channel.guild.id == self._guild_id
-                    and isinstance(channel, discord.TextChannel)]
+        matching = [
+            channel for channel in DiscordBackend.client.get_all_channels()
+            if self._channel_name == channel.name and
+            channel.guild.id == self._guild_id and
+            isinstance(channel, discord.TextChannel)
+        ]
 
         if len(matching) == 0:
             return None
@@ -169,6 +175,7 @@ class DiscordRoom(Room, DiscordSender):
             )
 
         return matching[0].id
+
 
     @property
     def created_at(self):
@@ -183,8 +190,11 @@ class DiscordRoom(Room, DiscordSender):
                 raise RuntimeError("Can't invite non Discord Users")
 
             asyncio.run_coroutine_threadsafe(
-                self.discord_channel().set_permissions(identifier.discord_user(), read_messages=True),
-                loop=DiscordBackend.client.loop)
+                self.discord_channel().set_permissions(
+                    identifier.discord_user(),
+                    read_messages=True),
+                loop=DiscordBackend.client.loop
+            )
 
     @property
     def joined(self) -> bool:
@@ -213,19 +223,25 @@ class DiscordRoom(Room, DiscordSender):
             log.warning(f"Tried to create {self._channel_name} which already exists.")
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordBackend.client.loop).result(timeout=5)
+        asyncio.run_coroutine_threadsafe(
+            self.create_room(),
+            loop=DiscordBackend.client.loop
+        ).result(timeout=5)
 
     def destroy(self) -> None:
         if not self.exists:
             log.warning(f"Tried to destory {self._channel_name} which doesn't exist.")
             raise RoomError("Room doesn't exist")
 
-        asyncio.run_coroutine_threadsafe(self.discord_channel().delete(reason="Bot deletion command"),
-                                         loop=DiscordBackend.client.loop).result(timeout=5)
+        asyncio.run_coroutine_threadsafe(
+            self.discord_channel().delete(reason="Bot deletion command"),
+            loop=DiscordBackend.client.loop
+        ).result(timeout=5)
 
     def join(self, username: str = None, password: str = None) -> None:
         """
-        All public channels are already joined. Only private channels can be joined and we need an invite for that
+        All public channels are already joined. Only private channels can be joined and we
+        need an invite for that.
         :param username:
         :param password:
         :return:
@@ -255,7 +271,7 @@ class DiscordRoom(Room, DiscordSender):
 
     @property
     def exists(self) -> bool:
-        return self._channel_id is not None and DiscordBackend.client.get_channel(self._channel_id) is not None
+        return None not in [self._channel_id, DiscordBackend.client.get_channel(self._channel_id)]
 
     @property
     def guild(self):
@@ -287,10 +303,15 @@ class DiscordRoom(Room, DiscordSender):
         """
         return self._channel_id
 
-    def discord_channel(self) -> Optional[Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]]:
+    def discord_channel(self) -> Optional[
+        Union[
+            discord.abc.GuildChannel,
+            discord.abc.PrivateChannel
+        ]
+    ]:
         return DiscordBackend.client.get_channel(self._channel_id)
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         if not self.exists:
             raise RuntimeError("Can't send a message on a non-existent channel")
         if not isinstance(self.discord_channel(), discord.abc.Messageable):
@@ -307,21 +328,24 @@ class DiscordRoom(Room, DiscordSender):
         if not isinstance(other, DiscordRoom):
             return False
 
-        return other.id is not None and self.id is not None \
-               and other.id == self.id
+        return None not in [other.id, self.id] and other.id == self.id
 
 
 class DiscordCategory(DiscordRoom):
 
     def channel_name_to_id(self):
         """
-        Channel names are non-unique across Discord. Hence we require a guild name to uniquely identify a room id
+        Channel names are non-unique across Discord. Hence we require a guild name to
+        uniquely identify a room id.
 
         :return: ID of the room
         """
-        matching = [channel for channel in DiscordBackend.client.get_all_channels() if self._channel_name == channel.name
-                    and channel.guild.id == self._guild_id
-                    and isinstance(channel, discord.CategoryChannel)]
+        matching = [
+            channel for channel in DiscordBackend.client.get_all_channels()
+            if self._channel_name == channel.name and
+            channel.guild.id == self._guild_id and
+            isinstance(channel, discord.CategoryChannel)
+        ]
 
         if len(matching) == 0:
             return None
@@ -340,8 +364,10 @@ class DiscordCategory(DiscordRoom):
         if not isinstance(category, discord.CategoryChannel):
             raise RuntimeError("Category is not a discord category object")
 
-        text_channel = asyncio.run_coroutine_threadsafe(category.create_text_channel(name),
-                                                        loop=DiscordBackend.client.loop).result(timeout=5)
+        text_channel = asyncio.run_coroutine_threadsafe(
+            category.create_text_channel(name),
+            loop=DiscordBackend.client.loop
+        ).result(timeout=5)
 
         return DiscordRoom.from_id(text_channel.id)
 
@@ -387,7 +413,7 @@ class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
     def room(self) -> DiscordRoom:
         return self._channel
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         await self.room.send(content=content, embed=embed)
 
     def __eq__(self, other):
@@ -534,7 +560,10 @@ class DiscordBackend(ErrBot):
             return DiscordRoom(room_name[1:], guild.id)
 
     def send_message(self, msg: Message):
-        # log.debug('{} -> {}'.format(msg.frm, msg.to))
+        for t in dir(msg):
+            if t.startswith("__"):
+                continue
+            log.debug(f'Message {t} {getattr(msg, t)}')
 
         recipient = msg.to
 
@@ -546,7 +575,10 @@ class DiscordBackend(ErrBot):
 
         for message in [msg.body[i:i + self.message_limit] for i in
                         range(0, len(msg.body), self.message_limit)]:
-            asyncio.run_coroutine_threadsafe(recipient.send(content=message), loop=DiscordBackend.client.loop)
+            asyncio.run_coroutine_threadsafe(
+                recipient.send(content=message),
+                loop=DiscordBackend.client.loop
+            )
 
             super().send_message(msg)
 
@@ -560,7 +592,7 @@ class DiscordBackend(ErrBot):
             )
 
         if card.color:
-            color = COLOURS[card.color] if card.color in COLOURS else int(card.color.replace('#', '0x'), 16)
+            color = COLOURS.get(card.color, int(card.color.replace('#', '0x'), 16))
         else:
             color = None
 
@@ -577,7 +609,10 @@ class DiscordBackend(ErrBot):
             for key, value in card.fields:
                 em.add_field(name=key, value=value, inline=True)
 
-        asyncio.run_coroutine_threadsafe(recipient.send(embed=em), loop=DiscordBackend.client.loop).result(5)
+        asyncio.run_coroutine_threadsafe(
+            recipient.send(embed=em),
+            loop=DiscordBackend.client.loop
+        ).result(5)
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
         response = self.build_message(text)
@@ -610,7 +645,7 @@ class DiscordBackend(ErrBot):
                 # we want to retrieve any exceptions to make sure that
                 # they don't nag us about it being un-retrieved.
                 gathered.exception()
-            except:
+            except Exception as e:
                 pass
             self.disconnect_callback()
             return True
@@ -624,7 +659,10 @@ class DiscordBackend(ErrBot):
         message.body = f'@{identifier.nick} {message.body}'
 
     def rooms(self):
-        return [DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()]
+        return [
+            DiscordRoom.from_id(channel.id)
+            for channel in DiscordBackend.client.get_all_channels()
+        ]
 
     @property
     def mode(self):
@@ -632,8 +670,9 @@ class DiscordBackend(ErrBot):
 
     def build_identifier(self, string_representation: str):
         """
-        This needs a major rethink/rework since discord bots can be in different Guilds so room name clashes are
-        certainly possible. For now we are only uniquely identifying users
+        This needs a major rethink/rework since discord bots can be in different
+        Guilds so room name clashes are certainly possible. For now we are only
+        uniquely identifying users
 
         Valid forms of strreps:
         user#discriminator      -> Person
