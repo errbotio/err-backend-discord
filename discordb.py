@@ -96,6 +96,7 @@ class DiscordPerson(Person, DiscordSender):
     def fullname(self) -> Optional[str]:
         usr = self.discord_user()
 
+        # FIXME: Returning non-string object breaks the __str__ method and raises exceptions.
         if usr is None:
             return None
 
@@ -112,7 +113,7 @@ class DiscordPerson(Person, DiscordSender):
         return isinstance(other, DiscordPerson) and other.aclattr == self.aclattr
 
     def __str__(self):
-        return self.fullname
+        return f"{self.fullname}"
 
 
 class DiscordRoom(Room, DiscordSender):
@@ -175,7 +176,6 @@ class DiscordRoom(Room, DiscordSender):
             )
 
         return matching[0].id
-
 
     @property
     def created_at(self):
