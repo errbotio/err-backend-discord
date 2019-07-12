@@ -491,6 +491,9 @@ class DiscordBackend(ErrBot):
         pass
 
     async def on_ready(self):
+        # Call connect only after successfully connected and ready to service Discord events.
+        self.connect_callback()
+
         log.debug(
             f'Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}'
         )
@@ -650,8 +653,6 @@ class DiscordBackend(ErrBot):
         return response
 
     def serve_once(self):
-        self.connect_callback()
-        # client.run cannot be used as we need more control.
         try:
             DiscordBackend.client.loop.run_until_complete(DiscordBackend.client.start(self.token))
         except KeyboardInterrupt:
