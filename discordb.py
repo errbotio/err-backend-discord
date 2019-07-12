@@ -64,6 +64,11 @@ class DiscordPerson(Person, DiscordSender):
         )
 
     def __init__(self, user_id: str):
+        """
+        @user_id: _must_ be a string representation of a Discord Snowflake (an integer).
+        """
+        if not isinstance(user_id, str) and re.match(r"[0-9]+", user_id):
+            raise "Invalid Discord user id."
         self._user_id = user_id
 
     def get_discord_object(self) -> discord.abc.Messageable:
@@ -556,6 +561,9 @@ class DiscordBackend(ErrBot):
         :param room:
         :return:
         """
+        if len(DiscordBackend.client.guilds) == 0:
+            log.error(f"Unable to join room '{room}' because no guilds were found!")
+            return None
 
         guild = DiscordBackend.client.guilds[0]
 
