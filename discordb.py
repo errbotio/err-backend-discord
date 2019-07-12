@@ -67,8 +67,8 @@ class DiscordPerson(Person, DiscordSender):
         """
         @user_id: _must_ be a string representation of a Discord Snowflake (an integer).
         """
-        if not isinstance(user_id, str) and re.match(r"[0-9]+", user_id):
-            raise "Invalid Discord user id."
+        if not re.match(r"[0-9]+", str(user_id)):
+            raise ValueError(f"Invalid Discord user id {type(user_id)} {user_id}.")
         self._user_id = user_id
 
     def get_discord_object(self) -> discord.abc.Messageable:
