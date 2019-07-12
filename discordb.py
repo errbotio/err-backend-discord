@@ -1,13 +1,23 @@
 import asyncio
 import logging
 import sys
+import re
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
 
 from discord.utils import find
-from errbot.backends.base import Person, Message, Room, RoomOccupant, Presence, \
-    ONLINE, OFFLINE, AWAY, DND, RoomError
-
+from errbot.backends.base import (
+    Person,
+    Message,
+    Room,
+    RoomOccupant,
+    Presence,
+    ONLINE,
+    OFFLINE,
+    AWAY,
+    DND,
+    RoomError
+)
 from errbot.core import ErrBot
 
 log = logging.getLogger(__name__)
@@ -46,7 +56,6 @@ class DiscordSender(ABC, discord.abc.Snowflake):
 
 
 class DiscordPerson(Person, DiscordSender):
-
     @classmethod
     def username_and_discriminator_to_userid(cls, username: str, discriminator: str) -> str:
         return find(
@@ -435,9 +444,7 @@ class DiscordBackend(ErrBot):
     def __init__(self, config):
         super().__init__(config)
         identity = config.BOT_IDENTITY
-
         self.token = identity.get('token', None)
-        self.rooms_to_join = config.CHATROOM_PRESENCE
 
         if not self.token:
             log.fatal(
