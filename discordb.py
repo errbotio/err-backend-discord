@@ -581,30 +581,24 @@ class DiscordBackend(ErrBot):
 
     def send_message(self, msg: Message):
         super().send_message(msg)
-        log.debug("Enter send_message")
-        for t in dir(msg):
-            if not t.startswith("__"):
-                log.debug(f'Message {t} {getattr(msg, t)}')
 
-        recipient = msg.to
-
-        if not isinstance(recipient, DiscordSender):
+        if not isinstance(msg.to, DiscordSender):
             raise RuntimeError(
-                f"{recipient} doesn't support sending messages."
-                f"  Expected {DiscordSender} but got {type(recipient)}."
+                f"{msg.to} doesn't support sending messages."
+                f"  Expected DiscordSender object but got {type(msg.to)}."
             )
+
+        log.debug(
+            f"Message to:{msg.to}({type(msg.to)}) from:{msg.frm}({type(msg.frm)}),"
+            f" is_direct:{msg.is_direct} extras: {msg.extras} size: {len(msg.body)}"
+        )
 
         for message in [msg.body[i:i + self.message_limit] for i in
                         range(0, len(msg.body), self.message_limit)]:
             asyncio.run_coroutine_threadsafe(
-                recipient.send(content=message),
+                msg.to.send(content=message),
                 loop=DiscordBackend.client.loop
             )
-        log.debug("Exit send_message")
-
-    def send(self, identifier, text, in_reply_to=None, groupchat_nick_reply=False):
-        super().send(identifier, text, in_reply_to, groupchat_nick_reply)
-        log.debug("Discord Backend send() called.")
 
     def send_card(self, card):
         recipient = card.to
@@ -705,14 +699,14 @@ class DiscordBackend(ErrBot):
         if not string_representation:
             raise ValueError('Empty strrep')
 
-        if '#' in string_representation:
-            user, discriminator = string_representation.split('#')
+        if '#' in str(string_representation):
+            user, discriminator = str(string_representation).split('#')
         else:
             raise ValueError("No Discriminator")
+        log.debug(f"Build_idenifier {string_representation}")
+        member = DiscordPerson.username_and_discriminator_to_userid(user, discriminator)
 
-        user_id = DiscordPerson.username_and_discriminator_to_userid(user, discriminator)
-
-        return DiscordPerson(user_id=user_id)
+        return DiscordPerson(user_id=member.id)
 
     def upload_file(self, msg, filename):
         if msg.is_direct:
