@@ -260,7 +260,10 @@ class DiscordRoom(Room, DiscordSender):
         :param password:
         :return:
         """
-        raise RuntimeError("Can't join channels")
+        log.warning(
+            "Can't join channels.  Public channels are automatically joined"
+            " and private channels are invite only."
+        )
 
     @property
     def topic(self) -> str:
