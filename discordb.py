@@ -1,13 +1,23 @@
 import asyncio
 import logging
 import sys
+import re
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
 
 from discord.utils import find
-from errbot.backends.base import Person, Message, Room, RoomOccupant, Presence, \
-    ONLINE, OFFLINE, AWAY, DND, RoomError
-
+from errbot.backends.base import (
+    Person,
+    Message,
+    Room,
+    RoomOccupant,
+    Presence,
+    ONLINE,
+    OFFLINE,
+    AWAY,
+    DND,
+    RoomError
+)
 from errbot.core import ErrBot
 
 log = logging.getLogger(__name__)
@@ -35,9 +45,9 @@ COLOURS = {
 }  # Discord doesn't know its colours
 
 
-class DiscordSender(ABC):
+class DiscordSender(ABC, discord.abc.Snowflake):
     @abstractmethod
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         raise NotImplementedError
 
     @abstractmethod
@@ -45,14 +55,20 @@ class DiscordSender(ABC):
         raise NotImplementedError
 
 
-class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
-
+class DiscordPerson(Person, DiscordSender):
     @classmethod
     def username_and_discriminator_to_userid(cls, username: str, discriminator: str) -> str:
-        return find(lambda m: m.name == username and m.discriminator == discriminator, DiscordBackend.client
-                    .get_all_members())
+        return find(
+            lambda m: m.name == username and m.discriminator == discriminator,
+            DiscordBackend.client.get_all_members()
+        )
 
     def __init__(self, user_id: str):
+        """
+        @user_id: _must_ be a string representation of a Discord Snowflake (an integer).
+        """
+        if not re.match(r"[0-9]+", str(user_id)):
+            raise ValueError(f"Invalid Discord user id {type(user_id)} {user_id}.")
         self._user_id = user_id
 
     def get_discord_object(self) -> discord.abc.Messageable:
@@ -94,6 +110,7 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
     def fullname(self) -> Optional[str]:
         usr = self.discord_user()
 
+        # FIXME: Returning non-string object breaks the __str__ method and raises exceptions.
         if usr is None:
             return None
 
@@ -103,17 +120,17 @@ class DiscordPerson(Person, DiscordSender, discord.abc.Snowflake):
     def aclattr(self) -> str:
         return self.fullname
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         await self.discord_user().send(content=content, embed=embed)
 
     def __eq__(self, other):
         return isinstance(other, DiscordPerson) and other.aclattr == self.aclattr
 
     def __str__(self):
-        return self.fullname
+        return f"{self.fullname}"
 
 
-class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
+class DiscordRoom(Room, DiscordSender):
     """
     DiscordRoom objects can be in two states:
 
@@ -132,8 +149,8 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
     def __init__(self, channel_name: str, guild_id: str):
         """
-        Allows to specify an existing room (via name + guild or via id) or allows the creation of a future room by
-        specifying a name and guild to create the channel in.
+        Allows to specify an existing room (via name + guild or via id) or allows the
+        creation of a future room by specifying a name and guild to create the channel in.
 
         :param channel_name:
         :param guild_id:
@@ -151,13 +168,17 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
     def channel_name_to_id(self):
         """
-        Channel names are non-unique across Discord. Hence we require a guild name to uniquely identify a room id
+        Channel names are non-unique across Discord. Hence we require a guild name to uniquely
+        identify a room id
 
         :return: ID of the room
         """
-        matching = [channel for channel in DiscordBackend.client.get_all_channels() if self._channel_name == channel.name
-                    and channel.guild.id == self._guild_id
-                    and isinstance(channel, discord.TextChannel)]
+        matching = [
+            channel for channel in DiscordBackend.client.get_all_channels()
+            if self._channel_name == channel.name and
+            channel.guild.id == self._guild_id and
+            isinstance(channel, discord.TextChannel)
+        ]
 
         if len(matching) == 0:
             return None
@@ -183,8 +204,11 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
                 raise RuntimeError("Can't invite non Discord Users")
 
             asyncio.run_coroutine_threadsafe(
-                self.discord_channel().set_permissions(identifier.discord_user(), read_messages=True),
-                loop=DiscordBackend.client.loop)
+                self.discord_channel().set_permissions(
+                    identifier.discord_user(),
+                    read_messages=True),
+                loop=DiscordBackend.client.loop
+            )
 
     @property
     def joined(self) -> bool:
@@ -213,24 +237,33 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
             log.warning(f"Tried to create {self._channel_name} which already exists.")
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordBackend.client.loop).result(timeout=5)
+        asyncio.run_coroutine_threadsafe(
+            self.create_room(),
+            loop=DiscordBackend.client.loop
+        ).result(timeout=5)
 
     def destroy(self) -> None:
         if not self.exists:
             log.warning(f"Tried to destory {self._channel_name} which doesn't exist.")
             raise RoomError("Room doesn't exist")
 
-        asyncio.run_coroutine_threadsafe(self.discord_channel().delete(reason="Bot deletion command"),
-                                         loop=DiscordBackend.client.loop).result(timeout=5)
+        asyncio.run_coroutine_threadsafe(
+            self.discord_channel().delete(reason="Bot deletion command"),
+            loop=DiscordBackend.client.loop
+        ).result(timeout=5)
 
     def join(self, username: str = None, password: str = None) -> None:
         """
-        All public channels are already joined. Only private channels can be joined and we need an invite for that
+        All public channels are already joined. Only private channels can be joined and we
+        need an invite for that.
         :param username:
         :param password:
         :return:
         """
-        raise RuntimeError("Can't join channels")
+        log.warning(
+            "Can't join channels.  Public channels are automatically joined"
+            " and private channels are invite only."
+        )
 
     @property
     def topic(self) -> str:
@@ -255,7 +288,7 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
 
     @property
     def exists(self) -> bool:
-        return self._channel_id is not None and DiscordBackend.client.get_channel(self._channel_id) is not None
+        return None not in [self._channel_id, DiscordBackend.client.get_channel(self._channel_id)]
 
     @property
     def guild(self):
@@ -287,10 +320,15 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         """
         return self._channel_id
 
-    def discord_channel(self) -> Optional[Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]]:
+    def discord_channel(self) -> Optional[
+        Union[
+            discord.abc.GuildChannel,
+            discord.abc.PrivateChannel
+        ]
+    ]:
         return DiscordBackend.client.get_channel(self._channel_id)
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         if not self.exists:
             raise RuntimeError("Can't send a message on a non-existent channel")
         if not isinstance(self.discord_channel(), discord.abc.Messageable):
@@ -307,21 +345,24 @@ class DiscordRoom(Room, DiscordSender, discord.abc.Snowflake):
         if not isinstance(other, DiscordRoom):
             return False
 
-        return other.id is not None and self.id is not None \
-               and other.id == self.id
+        return None not in [other.id, self.id] and other.id == self.id
 
 
-class DiscordCategory(DiscordRoom, Room):
+class DiscordCategory(DiscordRoom):
 
     def channel_name_to_id(self):
         """
-        Channel names are non-unique across Discord. Hence we require a guild name to uniquely identify a room id
+        Channel names are non-unique across Discord. Hence we require a guild name to
+        uniquely identify a room id.
 
         :return: ID of the room
         """
-        matching = [channel for channel in DiscordBackend.client.get_all_channels() if self._channel_name == channel.name
-                    and channel.guild.id == self._guild_id
-                    and isinstance(channel, discord.CategoryChannel)]
+        matching = [
+            channel for channel in DiscordBackend.client.get_all_channels()
+            if self._channel_name == channel.name and
+            channel.guild.id == self._guild_id and
+            isinstance(channel, discord.CategoryChannel)
+        ]
 
         if len(matching) == 0:
             return None
@@ -340,8 +381,10 @@ class DiscordCategory(DiscordRoom, Room):
         if not isinstance(category, discord.CategoryChannel):
             raise RuntimeError("Category is not a discord category object")
 
-        text_channel = asyncio.run_coroutine_threadsafe(category.create_text_channel(name),
-                                                        loop=DiscordBackend.client.loop).result(timeout=5)
+        text_channel = asyncio.run_coroutine_threadsafe(
+            category.create_text_channel(name),
+            loop=DiscordBackend.client.loop
+        ).result(timeout=5)
 
         return DiscordRoom.from_id(text_channel.id)
 
@@ -376,7 +419,7 @@ class DiscordCategory(DiscordRoom, Room):
         raise RuntimeError("Can't invite to categories")
 
 
-class DiscordRoomOccupant(DiscordPerson, RoomOccupant, DiscordSender, discord.abc.Snowflake):
+class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
 
     def __init__(self, user_id: str, channel_id: str):
         super().__init__(user_id)
@@ -387,7 +430,7 @@ class DiscordRoomOccupant(DiscordPerson, RoomOccupant, DiscordSender, discord.ab
     def room(self) -> DiscordRoom:
         return self._channel
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str=None, embed: discord.Embed=None):
         await self.room.send(content=content, embed=embed)
 
     def __eq__(self, other):
@@ -409,9 +452,7 @@ class DiscordBackend(ErrBot):
     def __init__(self, config):
         super().__init__(config)
         identity = config.BOT_IDENTITY
-
         self.token = identity.get('token', None)
-        self.rooms_to_join = config.CHATROOM_PRESENCE
 
         if not self.token:
             log.fatal(
@@ -422,9 +463,15 @@ class DiscordBackend(ErrBot):
         self.bot_identifier = None
 
         DiscordBackend.client = discord.Client()
-        self.on_ready = DiscordBackend.client.event(self.on_ready)
-        self.on_message = DiscordBackend.client.event(self.on_message)
-        self.on_member_update = DiscordBackend.client.event(self.on_member_update)
+        # Register discord event coroutines.
+        for fn in [
+            self.on_ready,
+            self.on_message,
+            self.on_member_update,
+            self.on_message_edit,
+            self.on_member_update
+        ]:
+            DiscordBackend.client.event(fn)
 
     @property
     def message_limit(self):
@@ -436,10 +483,17 @@ class DiscordBackend(ErrBot):
             limit = min(int(self.bot_config.MESSAGE_SIZE_LIMIT), DISCORD_MESSAGE_SIZE_LIMIT)
         except (AttributeError, ValueError) as e:
             limit = DISCORD_MESSAGE_SIZE_LIMIT
-        log.debug(f"message size {limit}")
         return limit
 
+    async def on_error(self, event, *args, **kwargs):
+        super().on_error(event, *args, **kwargs)
+        # A stub entry in case special error handling is required.
+        pass
+
     async def on_ready(self):
+        # Call connect only after successfully connected and ready to service Discord events.
+        self.connect_callback()
+
         log.debug(
             f'Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}'
         )
@@ -448,6 +502,9 @@ class DiscordBackend(ErrBot):
 
         for channel in DiscordBackend.client.get_all_channels():
             log.debug(f'Found channel: {channel}')
+
+    async def on_message_edit(self, before, after):
+        log.warning("Message editing not supported.")
 
     async def on_message(self, msg: discord.Message):
         err_msg = Message(msg.content, extras=msg.embeds)
@@ -510,6 +567,9 @@ class DiscordBackend(ErrBot):
         :param room:
         :return:
         """
+        if len(DiscordBackend.client.guilds) == 0:
+            log.error(f"Unable to join room '{room}' because no guilds were found!")
+            return None
 
         guild = DiscordBackend.client.guilds[0]
 
@@ -520,21 +580,25 @@ class DiscordBackend(ErrBot):
             return DiscordRoom(room_name[1:], guild.id)
 
     def send_message(self, msg: Message):
-        # log.debug('{} -> {}'.format(msg.frm, msg.to))
+        super().send_message(msg)
 
-        recipient = msg.to
-
-        if not isinstance(recipient, DiscordSender):
+        if not isinstance(msg.to, DiscordSender):
             raise RuntimeError(
-                f"{recipient} doesn't support sending messages."
-                f"  Expected {DiscordSender} but got {type(recipient)}."
+                f"{msg.to} doesn't support sending messages."
+                f"  Expected DiscordSender object but got {type(msg.to)}."
             )
+
+        log.debug(
+            f"Message to:{msg.to}({type(msg.to)}) from:{msg.frm}({type(msg.frm)}),"
+            f" is_direct:{msg.is_direct} extras: {msg.extras} size: {len(msg.body)}"
+        )
 
         for message in [msg.body[i:i + self.message_limit] for i in
                         range(0, len(msg.body), self.message_limit)]:
-            asyncio.run_coroutine_threadsafe(recipient.send(content=message), loop=DiscordBackend.client.loop)
-
-            super().send_message(msg)
+            asyncio.run_coroutine_threadsafe(
+                msg.to.send(content=message),
+                loop=DiscordBackend.client.loop
+            )
 
     def send_card(self, card):
         recipient = card.to
@@ -546,7 +610,7 @@ class DiscordBackend(ErrBot):
             )
 
         if card.color:
-            color = COLOURS[card.color] if card.color in COLOURS else int(card.color.replace('#', '0x'), 16)
+            color = COLOURS.get(card.color, int(card.color.replace('#', '0x'), 16))
         else:
             color = None
 
@@ -563,7 +627,10 @@ class DiscordBackend(ErrBot):
             for key, value in card.fields:
                 em.add_field(name=key, value=value, inline=True)
 
-        asyncio.run_coroutine_threadsafe(recipient.send(embed=em), loop=DiscordBackend.client.loop).result(5)
+        asyncio.run_coroutine_threadsafe(
+            recipient.send(embed=em),
+            loop=DiscordBackend.client.loop
+        ).result(5)
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
         response = self.build_message(text)
@@ -580,8 +647,6 @@ class DiscordBackend(ErrBot):
         return response
 
     def serve_once(self):
-        self.connect_callback()
-        # client.run cannot be used as we need more control.
         try:
             DiscordBackend.client.loop.run_until_complete(DiscordBackend.client.start(self.token))
         except KeyboardInterrupt:
@@ -596,7 +661,7 @@ class DiscordBackend(ErrBot):
                 # we want to retrieve any exceptions to make sure that
                 # they don't nag us about it being un-retrieved.
                 gathered.exception()
-            except:
+            except Exception as e:
                 pass
             self.disconnect_callback()
             return True
@@ -610,7 +675,10 @@ class DiscordBackend(ErrBot):
         message.body = f'@{identifier.nick} {message.body}'
 
     def rooms(self):
-        return [DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()]
+        return [
+            DiscordRoom.from_id(channel.id)
+            for channel in DiscordBackend.client.get_all_channels()
+        ]
 
     @property
     def mode(self):
@@ -618,8 +686,9 @@ class DiscordBackend(ErrBot):
 
     def build_identifier(self, string_representation: str):
         """
-        This needs a major rethink/rework since discord bots can be in different Guilds so room name clashes are
-        certainly possible. For now we are only uniquely identifying users
+        This needs a major rethink/rework since discord bots can be in different
+        Guilds so room name clashes are certainly possible. For now we are only
+        uniquely identifying users
 
         Valid forms of strreps:
         user#discriminator      -> Person
@@ -630,14 +699,14 @@ class DiscordBackend(ErrBot):
         if not string_representation:
             raise ValueError('Empty strrep')
 
-        if '#' in string_representation:
-            user, discriminator = string_representation.split('#')
+        if '#' in str(string_representation):
+            user, discriminator = str(string_representation).split('#')
         else:
             raise ValueError("No Discriminator")
+        log.debug(f"Build_idenifier {string_representation}")
+        member = DiscordPerson.username_and_discriminator_to_userid(user, discriminator)
 
-        user_id = DiscordPerson.username_and_discriminator_to_userid(user, discriminator)
-
-        return DiscordPerson(user_id=user_id)
+        return DiscordPerson(user_id=member.id)
 
     def upload_file(self, msg, filename):
         if msg.is_direct:
