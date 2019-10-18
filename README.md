@@ -3,9 +3,6 @@
 This is a [Discord](http://discordapp.com) back-end for [Errbot](http://errbot.io).  It allows you to use errbot from Discord to execute commands.
 [![Updates](https://pyup.io/repos/github/gbin/err-backend-discord/shield.svg)](https://pyup.io/repos/github/gbin/err-backend-discord/)
 
-**This project is currently under development!**
-Active progress is being made under the `development` branch and will be merged to `master` once it is stable.  You are welcome to try the development branch to help test and report any issues encountered with it.
-
 ## Installation
 An errbot instance is required to install the discord back-end.  See the errbot installation [documentation](http://errbot.io/en/latest/user_guide/setup.html#option-2-installing-errbot-in-a-virtualenv-preferred) for details.
 
