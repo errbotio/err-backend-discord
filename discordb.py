@@ -16,7 +16,7 @@ from errbot.backends.base import (
     OFFLINE,
     AWAY,
     DND,
-    RoomError
+    RoomError,
 )
 from errbot.core import ErrBot
 
@@ -36,18 +36,18 @@ except ImportError:
 DISCORD_MESSAGE_SIZE_LIMIT = 2000
 
 COLOURS = {
-    'red': 0xFF0000,
-    'green': 0x008000,
-    'yellow': 0xFFA500,
-    'blue': 0x0000FF,
-    'white': 0xFFFFFF,
-    'cyan': 0x00FFFF
+    "red": 0xFF0000,
+    "green": 0x008000,
+    "yellow": 0xFFA500,
+    "blue": 0x0000FF,
+    "white": 0xFFFFFF,
+    "cyan": 0x00FFFF,
 }  # Discord doesn't know its colours
 
 
 class DiscordSender(ABC, discord.abc.Snowflake):
     @abstractmethod
-    async def send(self, content: str=None, embed: discord.Embed=None):
+    async def send(self, content: str = None, embed: discord.Embed = None):
         raise NotImplementedError
 
     @abstractmethod
@@ -60,7 +60,7 @@ class DiscordPerson(Person, DiscordSender):
     def username_and_discriminator_to_userid(cls, username: str, discriminator: str) -> str:
         return find(
             lambda m: m.name == username and m.discriminator == discriminator,
-            DiscordBackend.client.get_all_members()
+            DiscordBackend.client.get_all_members(),
         )
 
     def __init__(self, user_id: str):
@@ -95,8 +95,8 @@ class DiscordPerson(Person, DiscordSender):
         user = self.discord_user()
 
         if user is None:
-            log.error(f'Cannot find user with ID {self._user_id}')
-            return f'<{self._user_id}>'
+            log.error(f"Cannot find user with ID {self._user_id}")
+            return f"<{self._user_id}>"
 
         return user.name
 
@@ -120,7 +120,7 @@ class DiscordPerson(Person, DiscordSender):
     def aclattr(self) -> str:
         return self.fullname
 
-    async def send(self, content: str=None, embed: discord.Embed=None):
+    async def send(self, content: str = None, embed: discord.Embed = None):
         await self.discord_user().send(content=content, embed=embed)
 
     def __eq__(self, other):
@@ -174,10 +174,11 @@ class DiscordRoom(Room, DiscordSender):
         :return: ID of the room
         """
         matching = [
-            channel for channel in DiscordBackend.client.get_all_channels()
-            if self._channel_name == channel.name and
-            channel.guild.id == self._guild_id and
-            isinstance(channel, discord.TextChannel)
+            channel
+            for channel in DiscordBackend.client.get_all_channels()
+            if self._channel_name == channel.name
+            and channel.guild.id == self._guild_id
+            and isinstance(channel, discord.TextChannel)
         ]
 
         if len(matching) == 0:
@@ -205,14 +206,14 @@ class DiscordRoom(Room, DiscordSender):
 
             asyncio.run_coroutine_threadsafe(
                 self.discord_channel().set_permissions(
-                    identifier.discord_user(),
-                    read_messages=True),
-                loop=DiscordBackend.client.loop
+                    identifier.discord_user(), read_messages=True
+                ),
+                loop=DiscordBackend.client.loop,
             )
 
     @property
     def joined(self) -> bool:
-        log.error('Not implemented')
+        log.error("Not implemented")
         return True
 
     def leave(self, reason: str = None) -> None:
@@ -221,7 +222,7 @@ class DiscordRoom(Room, DiscordSender):
         :param reason:
         :return:
         """
-        log.error('Not implemented')
+        log.error("Not implemented")
 
     async def create_room(self):
         guild = DiscordBackend.client.get_guild(self._guild_id)
@@ -238,8 +239,7 @@ class DiscordRoom(Room, DiscordSender):
             raise RoomError("Room exists")
 
         asyncio.run_coroutine_threadsafe(
-            self.create_room(),
-            loop=DiscordBackend.client.loop
+            self.create_room(), loop=DiscordBackend.client.loop
         ).result(timeout=5)
 
     def destroy(self) -> None:
@@ -249,7 +249,7 @@ class DiscordRoom(Room, DiscordSender):
 
         asyncio.run_coroutine_threadsafe(
             self.discord_channel().delete(reason="Bot deletion command"),
-            loop=DiscordBackend.client.loop
+            loop=DiscordBackend.client.loop,
         ).result(timeout=5)
 
     def join(self, username: str = None, password: str = None) -> None:
@@ -320,15 +320,12 @@ class DiscordRoom(Room, DiscordSender):
         """
         return self._channel_id
 
-    def discord_channel(self) -> Optional[
-        Union[
-            discord.abc.GuildChannel,
-            discord.abc.PrivateChannel
-        ]
-    ]:
+    def discord_channel(
+        self,
+    ) -> Optional[Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]]:
         return DiscordBackend.client.get_channel(self._channel_id)
 
-    async def send(self, content: str=None, embed: discord.Embed=None):
+    async def send(self, content: str = None, embed: discord.Embed = None):
         if not self.exists:
             raise RuntimeError("Can't send a message on a non-existent channel")
         if not isinstance(self.discord_channel(), discord.abc.Messageable):
@@ -341,7 +338,7 @@ class DiscordRoom(Room, DiscordSender):
     def __str__(self):
         return f"<#{self.id}>"
 
-    def __eq__(self, other: 'DiscordRoom'):
+    def __eq__(self, other: "DiscordRoom"):
         if not isinstance(other, DiscordRoom):
             return False
 
@@ -349,7 +346,6 @@ class DiscordRoom(Room, DiscordSender):
 
 
 class DiscordCategory(DiscordRoom):
-
     def channel_name_to_id(self):
         """
         Channel names are non-unique across Discord. Hence we require a guild name to
@@ -358,10 +354,11 @@ class DiscordCategory(DiscordRoom):
         :return: ID of the room
         """
         matching = [
-            channel for channel in DiscordBackend.client.get_all_channels()
-            if self._channel_name == channel.name and
-            channel.guild.id == self._guild_id and
-            isinstance(channel, discord.CategoryChannel)
+            channel
+            for channel in DiscordBackend.client.get_all_channels()
+            if self._channel_name == channel.name
+            and channel.guild.id == self._guild_id
+            and isinstance(channel, discord.CategoryChannel)
         ]
 
         if len(matching) == 0:
@@ -382,8 +379,7 @@ class DiscordCategory(DiscordRoom):
             raise RuntimeError("Category is not a discord category object")
 
         text_channel = asyncio.run_coroutine_threadsafe(
-            category.create_text_channel(name),
-            loop=DiscordBackend.client.loop
+            category.create_text_channel(name), loop=DiscordBackend.client.loop
         ).result(timeout=5)
 
         return DiscordRoom.from_id(text_channel.id)
@@ -420,7 +416,6 @@ class DiscordCategory(DiscordRoom):
 
 
 class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
-
     def __init__(self, user_id: str, channel_id: str):
         super().__init__(user_id)
 
@@ -430,13 +425,15 @@ class DiscordRoomOccupant(DiscordPerson, RoomOccupant):
     def room(self) -> DiscordRoom:
         return self._channel
 
-    async def send(self, content: str=None, embed: discord.Embed=None):
+    async def send(self, content: str = None, embed: discord.Embed = None):
         await self.room.send(content=content, embed=embed)
 
     def __eq__(self, other):
-        return isinstance(other, DiscordRoomOccupant) \
-               and other.id == self.id \
-               and other.room.id == self.room.id
+        return (
+            isinstance(other, DiscordRoomOccupant)
+            and other.id == self.id
+            and other.room.id == self.room.id
+        )
 
     def __str__(self):
         return f"{super().__str__()}@{self._channel.name}"
@@ -452,12 +449,12 @@ class DiscordBackend(ErrBot):
     def __init__(self, config):
         super().__init__(config)
         identity = config.BOT_IDENTITY
-        self.token = identity.get('token', None)
+        self.token = identity.get("token", None)
 
         if not self.token:
             log.fatal(
-                'You need to set a token entry in the BOT_IDENTITY'
-                ' setting of your configuration.'
+                "You need to set a token entry in the BOT_IDENTITY"
+                " setting of your configuration."
             )
             sys.exit(1)
         self.bot_identifier = None
@@ -469,7 +466,7 @@ class DiscordBackend(ErrBot):
             self.on_message,
             self.on_member_update,
             self.on_message_edit,
-            self.on_member_update
+            self.on_member_update,
         ]:
             DiscordBackend.client.event(fn)
 
@@ -495,13 +492,13 @@ class DiscordBackend(ErrBot):
         self.connect_callback()
 
         log.debug(
-            f'Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}'
+            f"Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}"
         )
         if self.bot_identifier is None:
             self.bot_identifier = DiscordPerson(DiscordBackend.client.user.id)
 
         for channel in DiscordBackend.client.get_all_channels():
-            log.debug(f'Found channel: {channel}')
+            log.debug(f"Found channel: {channel}")
 
     async def on_message_edit(self, before, after):
         log.warning("Message editing not supported.")
@@ -524,12 +521,13 @@ class DiscordBackend(ErrBot):
                 raise ValueError("Message object from is not a DiscordSender")
 
             async with recipient.get_discord_object().typing():
-                self._dispatch_to_plugins('callback_message', err_msg)
+                self._dispatch_to_plugins("callback_message", err_msg)
 
         if msg.mentions:
-            self.callback_mention(err_msg,
-                                  [DiscordRoomOccupant(mention.id, msg.channel.id)
-                                   for mention in msg.mentions])
+            self.callback_mention(
+                err_msg,
+                [DiscordRoomOccupant(mention.id, msg.channel.id) for mention in msg.mentions],
+            )
 
     def is_from_self(self, msg: Message) -> bool:
         other = msg.frm
@@ -543,9 +541,7 @@ class DiscordBackend(ErrBot):
         if before.status != after.status:
             person = DiscordPerson(after.id)
 
-            log.debug(
-                f'Person {person} changed status to {after.status} from {before.status}'
-            )
+            log.debug(f"Person {person} changed status to {after.status} from {before.status}")
             if after.status == discord.Status.online:
                 self.callback_presence(Presence(person, ONLINE))
             elif after.status == discord.Status.offline:
@@ -555,7 +551,7 @@ class DiscordBackend(ErrBot):
             elif after.status == discord.Status.dnd:
                 self.callback_presence(Presence(person, DND))
         else:
-            log.debug('Unrecognised member update, ignoring...')
+            log.debug("Unrecognised member update, ignoring...")
 
     def query_room(self, room):
         """
@@ -593,11 +589,12 @@ class DiscordBackend(ErrBot):
             f" is_direct:{msg.is_direct} extras: {msg.extras} size: {len(msg.body)}"
         )
 
-        for message in [msg.body[i:i + self.message_limit] for i in
-                        range(0, len(msg.body), self.message_limit)]:
+        for message in [
+            msg.body[i : i + self.message_limit]
+            for i in range(0, len(msg.body), self.message_limit)
+        ]:
             asyncio.run_coroutine_threadsafe(
-                msg.to.send(content=message),
-                loop=DiscordBackend.client.loop
+                msg.to.send(content=message), loop=DiscordBackend.client.loop
             )
 
     def send_card(self, card):
@@ -610,7 +607,7 @@ class DiscordBackend(ErrBot):
             )
 
         if card.color:
-            color = COLOURS.get(card.color, int(card.color.replace('#', '0x'), 16))
+            color = COLOURS.get(card.color, int(card.color.replace("#", "0x"), 16))
         else:
             color = None
 
@@ -628,8 +625,7 @@ class DiscordBackend(ErrBot):
                 em.add_field(name=key, value=value, inline=True)
 
         asyncio.run_coroutine_threadsafe(
-            recipient.send(embed=em),
-            loop=DiscordBackend.client.loop
+            recipient.send(embed=em), loop=DiscordBackend.client.loop
         ).result(5)
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
@@ -666,23 +662,22 @@ class DiscordBackend(ErrBot):
             self.disconnect_callback()
             return True
 
-    def change_presence(self, status: str = ONLINE, message: str = ''):
+    def change_presence(self, status: str = ONLINE, message: str = ""):
         log.debug(f'Presence changed to {status} and activity "{message}".')
         activity = discord.Activity(name=message)
         DiscordBackend.client.change_presence(status=status, activity=activity)
 
     def prefix_groupchat_reply(self, message, identifier: Person):
-        message.body = f'@{identifier.nick} {message.body}'
+        message.body = f"@{identifier.nick} {message.body}"
 
     def rooms(self):
         return [
-            DiscordRoom.from_id(channel.id)
-            for channel in DiscordBackend.client.get_all_channels()
+            DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()
         ]
 
     @property
     def mode(self):
-        return 'discord'
+        return "discord"
 
     def build_identifier(self, string_representation: str):
         """
@@ -697,10 +692,10 @@ class DiscordBackend(ErrBot):
         :return: Identifier
         """
         if not string_representation:
-            raise ValueError('Empty strrep')
+            raise ValueError("Empty strrep")
 
-        if '#' in str(string_representation):
-            user, discriminator = str(string_representation).split('#')
+        if "#" in str(string_representation):
+            user, discriminator = str(string_representation).split("#")
         else:
             raise ValueError("No Discriminator")
         log.debug(f"Build_idenifier {string_representation}")
@@ -710,16 +705,15 @@ class DiscordBackend(ErrBot):
 
     def upload_file(self, msg, filename):
         if msg.is_direct:
-            log.debug('Sending file to user')
+            log.debug("Sending file to user")
             asyncio.run_coroutine_threadsafe(
                 self.client.send_file(DiscordPerson.from_user(msg.frm), filename),
-                loop=self.client.loop
+                loop=self.client.loop,
             )
         else:
-            log.info('Sending file to channel')
+            log.info("Sending file to channel")
             asyncio.run_coroutine_threadsafe(
-                self.client.send_file(msg.to.channel, filename),
-                loop=self.client.loop
+                self.client.send_file(msg.to.channel, filename), loop=self.client.loop
             )
 
     def history(self, channelname, before=None):
