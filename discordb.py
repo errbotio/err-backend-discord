@@ -698,7 +698,7 @@ class DiscordBackend(ErrBot):
             user, discriminator = str(string_representation).split("#")
         else:
             raise ValueError("No Discriminator")
-        log.debug(f"Build_idenifier {string_representation}")
+        log.debug(f"Build_identifier {string_representation}")
         member = DiscordPerson.username_and_discriminator_to_userid(user, discriminator)
 
         return DiscordPerson(user_id=member.id)
