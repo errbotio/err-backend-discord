@@ -574,6 +574,8 @@ class DiscordBackend(ErrBot):
             return DiscordCategory(room_name[2:], guild.id)
         elif room_name.startswith("#"):
             return DiscordRoom(room_name[1:], guild.id)
+        else:
+            return DiscordRoom(room_name, guild.id)
 
     def send_message(self, msg: Message):
         super().send_message(msg)
