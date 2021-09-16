@@ -5,12 +5,16 @@ This is a [Discord](http://discordapp.com) back-end for [Errbot](http://errbot.i
 [![Updates](https://pyup.io/repos/github/gbin/err-backend-discord/shield.svg)](https://pyup.io/repos/github/gbin/err-backend-discord/)
 [ ~ Dependencies scanned by PyUp.io ~ ]
 
+## News
+
+**⚠️ This backend uses the [discord.py](https://github.com/Rapptz/discord.py) python module which has been discontinued.  Support of this backend will continue on a best effort basis. ⚠️**
+
 ## Installation
 An Errbot instance is required to install the discord back-end.  See the Errbot installation [documentation](http://errbot.io/en/latest/user_guide/setup.html#option-2-installing-errbot-in-a-virtualenv-preferred) for details.
 
 ### Requirements
  * Python 3.6 or later
- * Discord.py 1.2.3 or later
+ * Discord.py 1.7.3 or later
 
 ### Virtual Environment
 The steps below are to install the discord back-end in Errbot's virtual environment.  In the examples below, the virtual environment was set to `/opt/errbot/virtualenv` and Errbot initialised in `/opt/errbot`.  The "extra" back-end directory is set to `/opt/errbot/backend`.
@@ -48,6 +52,10 @@ BOT_IDENTITY = {
 For further information about getting a bot user into a server please see: https://discordapp.com/developers/docs/topics/oauth2. You can use [this tool](https://discordapi.com/permissions.html) to generate a proper invitation link.
 The reactiflux community have written a quick start guide to [creating a discord bot and getting a token](https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-a-token)
 
+
+## Acknowledgements
+
+This backend gratefully uses the invaluable `discord.py` python module.
 
 ## Contributing
 

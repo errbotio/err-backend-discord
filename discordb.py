@@ -111,9 +111,8 @@ class DiscordPerson(Person, DiscordSender):
     def fullname(self) -> Optional[str]:
         usr = self.discord_user()
 
-        # FIXME: Returning non-string object breaks the __str__ method and raises exceptions.
         if usr is None:
-            return None
+            raise ValueError("Discord user is not defined.")
 
         return f"{usr.name}#{usr.discriminator}"
 
@@ -121,8 +120,31 @@ class DiscordPerson(Person, DiscordSender):
     def aclattr(self) -> str:
         return self.fullname
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
-        await self.discord_user().send(content=content, embed=embed)
+    async def send(
+        self,
+        content: str = None,
+        tts: bool = False,
+        embed: discord.Embed = None,
+        file: discord.File = None,
+        files: List[discord.File] = None,
+        delete_after: float = None,
+        nonce: int = None,
+        allowed_mentions: discord.AllowedMentions = None,
+        reference: Union[discord.Message, discord.MessageReference] = None,
+        mention_author: Optional[bool] = None,
+    ):
+        await self.discord_user().send(
+            content=content,
+            tts=tts,
+            embed=embed,
+            file=file,
+            files=files,
+            delete_after=delete_after,
+            nonce=nonce,
+            allowed_mentions=allowed_mentions,
+            reference=reference,
+            mention_author=mention_author,
+        )
 
     def __eq__(self, other):
         return isinstance(other, DiscordPerson) and other.aclattr == self.aclattr
@@ -694,7 +716,7 @@ class DiscordBackend(ErrBot):
         Valid forms of strreps:
         user#discriminator      -> Person
         #channel@guild_id       -> Room
-        
+
         :param string_representation:
         :return: Identifier
 
@@ -702,9 +724,9 @@ class DiscordBackend(ErrBot):
         """
         if not string_representation:
             raise ValueError("Empty strrep")
-        
-        if string_representation.startswith('#'):
-            strrep_split = string_representation.split('@')
+
+        if string_representation.startswith("#"):
+            strrep_split = string_representation.split("@")
             return DiscordRoom(strrep_split[0][1:], int(strrep_split[1]))
 
         if "#" in str(string_representation):
@@ -717,16 +739,18 @@ class DiscordBackend(ErrBot):
         return DiscordPerson(user_id=member.id)
 
     def upload_file(self, msg, filename):
-        if msg.is_direct:
-            log.debug("Sending file to user")
+        with open(filename, "r") as f:
+
+            dest = None
+            if msg.is_direct:
+                dest = DiscordPerson(msg.frm.id).get_discord_object()
+            else:
+                dest = msg.to.get_discord_object()
+
+            log.info(f"Sending file {filename} to user {msg.frm}")
             asyncio.run_coroutine_threadsafe(
-                self.client.send_file(DiscordPerson.from_user(msg.frm), filename),
+                dest.send(file=discord.File(f, filename=filename)),
                 loop=self.client.loop,
-            )
-        else:
-            log.info("Sending file to channel")
-            asyncio.run_coroutine_threadsafe(
-                self.client.send_file(msg.to.channel, filename), loop=self.client.loop
             )
 
     def history(self, channelname, before=None):
