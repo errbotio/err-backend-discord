@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "err-backend-discord"
-version = "3.0.0"
+version = "3.0.1"
 authors = [{ name="Errbot maintainers", email="noreply@errbot.io" }]
 keywords = [
     "errbot",
