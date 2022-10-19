@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [3.0.2] Unreleased
 
 ### Added
+  - Added upgrade notes section to installation documentation.
 
 ### Changed
   - Fixed copy/paste error in documentation.

@@ -9,7 +9,7 @@ Source Code
 The source code is hosted on github under the errbot organisation in the `err-backend-discord repository <https://github.com/errbotio/err-backend-discord>`_
 
 
-Contriubuting
+Contributing
 ------------------------------------------------------------------------
 
 The process for contributing to the discord backend follows the usual github process as described below:
