@@ -19,4 +19,4 @@ The process for contributing to the discord backend follows the usual github pro
 3. Create a branch for changes in your locally cloned repository.
 4. Develop feature/fix/change in your branch.
 5. Push work from your branch to your forked repository
-6. Open pull request from your forked repository to the official err-backend-mattermost repository.
+6. Open pull request from your forked repository to the official err-backend-discord repository.
