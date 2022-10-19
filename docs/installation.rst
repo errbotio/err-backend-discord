@@ -33,3 +33,22 @@ These instructions assume you have access to discord with a bot account configur
         errbot --init
 
     4. See the :ref:`configuration` section for configuration details.
+
+Changelog
+========================================================================
+
+Changes to the backend are maintained directly in the `github changelog <https://github.com/errbotio/err-backend-discord/blob/master/CHANGELOG.md>`_ and
+you are encourage to review them before upgrading the backend.
+
+Upgrade notes
+========================================================================
+
+v3.0.1
+------------------------------------------------------------------------
+
+The backend code has been restructure to follow the source layout.
+
+Some of the class definitions were moved into their own files for easier maintenance.
+`DiscordSender` and `DiscordPerson` are now located in `discordlib/person.py` while `DiscordRoom`, `DiscordRoomOccupant` and `DiscordCategory` are in `discordlib/room.py`
+
+If your plugin imports these classes, the import code will need to be updated to use the new location.

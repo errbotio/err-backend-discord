@@ -31,7 +31,7 @@ Enable **Server members intent** for your bot on the Discord website.  See `priv
 Discord application
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To create a bot user accouont for use with errbot, you can see the required permission settings in the `oauth2 <https://discordapp.com/developers/docs/topics/oauth2>`_ page.
+To create a bot user account for use with errbot, you can see the required permission settings in the `oauth2 <https://discordapp.com/developers/docs/topics/oauth2>`_ page.
 
 Discord provides a `tool <https://discordapi.com/permissions.html>`_ that can be used to generate a proper invitation link.
 
