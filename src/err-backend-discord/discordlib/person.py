@@ -9,6 +9,9 @@ from errbot.backends.base import Person
 
 log = logging.getLogger(__name__)
 
+# Discord uses 18 digits for user, channel and server (guild) ids.
+RE_DISCORD_ID = re.compile(r"^[0-9]{18}$")
+
 try:
     import discord
 except ImportError:
@@ -42,16 +45,30 @@ class DiscordPerson(Person, DiscordSender):
             DiscordPerson.client.get_all_members(),
         )
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str = None, username: str = None, discriminator: str = None):
         """
         @user_id: _must_ be a string representation of a Discord Snowflake (an integer).
+        @username: Discord username.
+        @discriminator: Discord discriminator to uniquely identify the username.
         """
-        if not re.match(r"[0-9]+", str(user_id)):
-            raise ValueError(f"Invalid Discord user id {type(user_id)} {user_id}.")
-        self._user_id = user_id
+        if user_id:
+            if not re.match(RE_DISCORD_ID, str(user_id)):
+                raise ValueError(f"Invalid Discord user id {type(user_id)} {user_id}.")
+
+            self._user_id = user_id
+        else:
+            if username and discriminator:
+                member = DiscordPerson.username_and_discriminator_to_userid(username, discriminator)
+                self.user_id = member.id
+            else:
+                raise ValueError("Username/discrimator pair or user id not provided.")
+
+        self.discord_user = DiscordPerson.client.get_user(int(self._user_id))
+        if self.discord_user is None:
+            raise ValueError(f"Failed to get the user {self._user_id}")
 
     def get_discord_object(self) -> discord.abc.Messageable:
-        return self.discord_user()
+        return self.discord_user
 
     @property
     def created_at(self):
@@ -62,22 +79,17 @@ class DiscordPerson(Person, DiscordSender):
         return str(self)
 
     @property
+    def email(self) -> str:
+        return "Unavailable"
+
+    @property
     def id(self) -> str:
         return self._user_id
 
-    def discord_user(self) -> discord.User:
-        return DiscordPerson.client.get_user(self._user_id)
-
     @property
     def username(self) -> str:
-        """Convert a Discord user ID to their user name"""
-        user = self.discord_user()
-
-        if user is None:
-            log.error(f"Cannot find user with ID {self._user_id}")
-            return f"<{self._user_id}>"
-
-        return user.name
+        """Return the user name"""
+        return self.discord_user.name
 
     nick = username
 
@@ -86,13 +98,8 @@ class DiscordPerson(Person, DiscordSender):
         return None
 
     @property
-    def fullname(self) -> Optional[str]:
-        usr = self.discord_user()
-
-        if usr is None:
-            raise ValueError("Discord user is not defined.")
-
-        return f"{usr.name}#{usr.discriminator}"
+    def fullname(self) -> str:
+        return f"{self.discord_user.name}#{self.discord_user.discriminator}"
 
     @property
     def aclattr(self) -> str:
@@ -111,7 +118,7 @@ class DiscordPerson(Person, DiscordSender):
         reference: Union[discord.Message, discord.MessageReference] = None,
         mention_author: Optional[bool] = None,
     ):
-        await self.discord_user().send(
+        await self.discord_user.send(
             content=content,
             tts=tts,
             embed=embed,

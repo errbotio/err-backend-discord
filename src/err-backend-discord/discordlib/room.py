@@ -43,24 +43,32 @@ class DiscordRoom(Room, DiscordSender):
 
         return cls(channel.name, channel.guild.id)
 
-    def __init__(self, channel_name: str, guild_id: str):
+    def __init__(self, channel_name: str = None, guild_id: str = None, channel_id: str = None):
         """
         Allows to specify an existing room (via name + guild or via id) or allows the
         creation of a future room by specifying a name and guild to create the channel in.
 
         :param channel_name:
         :param guild_id:
+        :param channel_id:
         """
 
-        if DiscordRoom.client.get_guild(guild_id) is None:
-            raise ValueError(f"Can't find guild id {guild_id} to init DiscordRoom")
+        if channel_id:
+            self._channel_id = int(channel_id)
+            self._channel_name = None
+            self._guild_id = None
+        else:
+            if DiscordRoom.client.get_guild(int(guild_id)) is None:
+                raise ValueError(f"Can't find guild id {guild_id} to init DiscordRoom")
 
-        self._guild_id = guild_id
-        self._channel_name = channel_name
-        self._channel_id = self.channel_name_to_id()  # Can be None if channel doesn't exist
+            self._guild_id = guild_id
+            self._channel_name = channel_name
+            self._channel_id = self.channel_name_to_id()  # Can be None if channel doesn't exist
+
+        self.discord_channel = DiscordRoom.client.get_channel(self._channel_id)
 
     def get_discord_object(self):
-        return self.discord_channel()
+        return self.discord_channel
 
     def channel_name_to_id(self):
         """
@@ -101,9 +109,7 @@ class DiscordRoom(Room, DiscordSender):
                 raise RuntimeError("Can't invite non Discord Users")
 
             asyncio.run_coroutine_threadsafe(
-                self.discord_channel().set_permissions(
-                    identifier.discord_user(), read_messages=True
-                ),
+                self.discord_channel.set_permissions(identifier.discord_user(), read_messages=True),
                 loop=DiscordRoom.client.loop,
             )
 
@@ -140,11 +146,11 @@ class DiscordRoom(Room, DiscordSender):
 
     def destroy(self) -> None:
         if not self.exists:
-            log.warning(f"Tried to destory {self._channel_name} which doesn't exist.")
+            log.warning(f"Tried to destroy {self._channel_name} which doesn't exist.")
             raise RoomError("Room doesn't exist")
 
         asyncio.run_coroutine_threadsafe(
-            self.discord_channel().delete(reason="Bot deletion command"),
+            self.discord_channel.delete(reason="Bot deletion command"),
             loop=DiscordRoom.client.loop,
         ).result(timeout=5)
 
@@ -166,7 +172,7 @@ class DiscordRoom(Room, DiscordSender):
         if not self.exists:
             return ""
 
-        topic = self.discord_channel().topic
+        topic = self.discord_channel.topic
         topic = "" if topic is None else topic
 
         return topic
@@ -177,7 +183,7 @@ class DiscordRoom(Room, DiscordSender):
             return []
 
         occupants = []
-        for member in self.discord_channel().members:
+        for member in self.discord_channel.members:
             occupants.append(DiscordRoomOccupant(member.id, self._channel_id))
 
         return occupants
@@ -192,7 +198,6 @@ class DiscordRoom(Room, DiscordSender):
         Gets the guild_id this channel belongs to. None if it doesn't exist
         :return: Guild id or None
         """
-
         return self._guild_id
 
     @property
@@ -216,20 +221,15 @@ class DiscordRoom(Room, DiscordSender):
         """
         return self._channel_id
 
-    def discord_channel(
-        self,
-    ) -> Optional[Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]]:
-        return DiscordRoom.client.get_channel(self._channel_id)
-
     async def send(self, content: str = None, embed: discord.Embed = None):
         if not self.exists:
             raise RuntimeError("Can't send a message on a non-existent channel")
-        if not isinstance(self.discord_channel(), discord.abc.Messageable):
+        if not isinstance(self.discord_channel, discord.abc.Messageable):
             raise RuntimeError(
                 f"Channel {self.name}[id:{self._channel_id}] doesn't support sending text messages"
             )
 
-        await self.discord_channel().send(content=content, embed=embed)
+        await self.discord_channel.send(content=content, embed=embed)
 
     def __str__(self):
         return f"<#{self.id}>"

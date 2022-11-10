@@ -4,4 +4,3 @@ Module = err-backend-discord
 
 [Documentation]
 Description = Discord backend for Errbot.
-

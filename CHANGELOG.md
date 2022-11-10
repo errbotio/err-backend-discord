@@ -4,16 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [3.0.2] Unreleased
+## [4.0.0] Unreleased
 
 ### Added
   - Added upgrade notes section to installation documentation.
+  - Added intents management.
 
 ### Changed
   - Fixed copy/paste error in documentation.
+  - Use the v2.0.1 discord python module.
 
 ### Removed
-
+  - Support for python3.7 has been removed to allow the use of the v2.0.1 discord python module.
 
 ## [3.0.1] 2022-10-19
 

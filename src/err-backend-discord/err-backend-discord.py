@@ -23,7 +23,7 @@ from discordlib.room import (
     DiscordCategory,
 )
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("errbot-backend-discord")
 
 try:
     import discord
@@ -53,6 +53,8 @@ class DiscordBackend(ErrBot):
         super().__init__(config)
 
         self.token = config.BOT_IDENTITY.get("token", None)
+        self.initial_intents = config.BOT_IDENTITY.get("initial_intents", "default")
+        self.intents = config.BOT_IDENTITY.get("intents", None)
 
         if not self.token:
             log.fatal(
@@ -62,28 +64,6 @@ class DiscordBackend(ErrBot):
             sys.exit(1)
 
         self.bot_identifier = None
-
-        intents = discord.Intents.default()
-        intents.members = True
-
-        DiscordBackend.client = discord.Client(intents=intents)
-
-        # Use dependency injection to make discord client available to submodule classes.
-        DiscordCategory.client = DiscordBackend.client
-        DiscordRoomOccupant.client = DiscordBackend.client
-        DiscordRoom.client = DiscordBackend.client
-        DiscordPerson.client = DiscordBackend.client
-        DiscordSender.client = DiscordBackend.client
-
-        # Register discord event coroutines.
-        for func in [
-            self.on_ready,
-            self.on_message,
-            self.on_member_update,
-            self.on_message_edit,
-            self.on_member_update,
-        ]:
-            DiscordBackend.client.event(func)
 
     def set_message_size_limit(self, limit=2000, hard_limit=2000):
         """
@@ -128,8 +108,8 @@ class DiscordBackend(ErrBot):
             err_msg.frm = DiscordPerson(msg.author.id)
             err_msg.to = self.bot_identifier
         else:
-            err_msg.to = DiscordRoom.from_id(DiscordBackend.client, msg.channel.id)
-            err_msg.frm = DiscordRoomOccupant(DiscordBackend.client, msg.author.id, msg.channel.id)
+            err_msg.to = DiscordRoom.from_id(msg.channel.id)
+            err_msg.frm = DiscordRoomOccupant(msg.author.id, msg.channel.id)
 
         if self.process_message(err_msg):
             # Message contains a command
@@ -144,10 +124,7 @@ class DiscordBackend(ErrBot):
         if msg.mentions:
             self.callback_mention(
                 err_msg,
-                [
-                    DiscordRoomOccupant(DiscordBackend.client, mention.id, msg.channel.id)
-                    for mention in msg.mentions
-                ],
+                [DiscordRoomOccupant(mention.id, msg.channel.id) for mention in msg.mentions],
             )
 
     def is_from_self(self, msg: Message) -> bool:
@@ -273,23 +250,106 @@ class DiscordBackend(ErrBot):
             response.to = DiscordPerson(mess.frm.id) if private else mess.to
         return response
 
-    def serve_once(self):
-        try:
-            DiscordBackend.client.loop.run_until_complete(DiscordBackend.client.start(self.token))
-        except KeyboardInterrupt:
-            DiscordBackend.client.loop.run_until_complete(DiscordBackend.client.logout())
-            pending = asyncio.Task.all_tasks()
-            gathered = asyncio.gather(*pending)
-            # noinspection PyBroadException
-            try:
-                gathered.cancel()
-                DiscordBackend.client.loop.run_until_complete(gathered)
+    def config_intents(self):
+        """
+        Process discord intents configuration for bot.
+        """
 
-                # we want to retrieve any exceptions to make sure that
-                # they don't nag us about it being un-retrieved.
-                gathered.exception()
-            except Exception:
-                pass
+        def apply_as_int(bot_intents, intent):
+            if intent >= 0:
+                bot_intents._set_flag(intent, True)
+            else:
+                intent *= -1
+                bot_intents._set_flag(intent, False)
+            return bot_intents
+
+        def apply_as_str(bot_intents, intent):
+            toggle = True
+            if intent.startswith("-"):
+                toggle = False
+                intent = intent[1:]
+
+            if hasattr(bot_intents, intent):
+                setattr(bot_intents, intent, toggle)
+            else:
+                log.warning("Unknown intent '%s'.", intent)
+            return bot_intents
+
+        bot_intents = {
+            "none": discord.Intents.none,
+            "default": discord.Intents.default,
+            "all": discord.Intents.all,
+        }.get(self.initial_intents, discord.Intents.default)()
+
+        if isinstance(self.intents, list):
+            for intent in self.intents:
+                if isinstance(intent, int):
+                    bot_intents = apply_as_int(bot_intents, intent)
+                elif isinstance(intent, str):
+                    bot_intents = apply_as_str(bot_intents, intent)
+                else:
+                    log.warning("Unkown intent type %s for '%s'", type(intent), str(intent))
+        elif isinstance(self.intents, int):
+            bot_intents = apply_as_int(bot_intents, self.intents)
+        else:
+            if self.intents is not None:
+                log.warning("Unsupported intent type %s for '%s'", type(self.intents), str(self.intents))
+
+        log.info("Enabled intents - {}".format(", ".join([i[0] for i in list(bot_intents) if i[1]])))
+        log.info(
+            "Disabled intents - {}".format(
+                ", ".join([i[0] for i in list(bot_intents) if i[1] is False])
+            )
+        )
+        return bot_intents
+
+    def initialise_client(self):
+        """
+        Initialise discord client.  This function is called whenever the serve_once
+        is restarted.  This involves initialising the intents, callback handlers
+        and dependency injection for classes that use the discord client.
+        """
+
+        bot_intents = self.config_intents()
+        DiscordBackend.client = discord.Client(intents=bot_intents)
+
+        # Register discord event coroutines.
+        for func in [
+            self.on_ready,
+            self.on_message,
+            self.on_member_update,
+            self.on_message_edit,
+            self.on_member_update,
+        ]:
+            DiscordBackend.client.event(func)
+
+        # Use dependency injection to make discord client available to submodule classes.
+        DiscordCategory.client = DiscordBackend.client
+        DiscordRoomOccupant.client = DiscordBackend.client
+        DiscordRoom.client = DiscordBackend.client
+        DiscordPerson.client = DiscordBackend.client
+        DiscordSender.client = DiscordBackend.client
+
+    def serve_once(self):
+        """
+        Initialise discord client and establish connection.
+        """
+
+        async def start_client(token):
+            """
+            Start the discord client using asynchronous event loop.
+            """
+            async with DiscordBackend.client:
+                await DiscordBackend.client.start(token)
+
+        try:
+            self.initialise_client()
+
+            # Discord.py 2.0's client.run convenience method traps KeyboardInterrupt so it can not be used.
+            # The documented manual method is used here so errbot can handle KeyboardInterrupt exceptions.
+            asyncio.run(start_client(self.token))
+
+        except KeyboardInterrupt:
             self.disconnect_callback()
             return True
 
@@ -310,37 +370,49 @@ class DiscordBackend(ErrBot):
     def mode(self):
         return "discord"
 
-    def build_identifier(self, string_representation: str):
+    def build_identifier(self, text: str):
         """
-        This needs a major rethink/rework since discord bots can be in different
-        Guilds so room name clashes are certainly possible. For now we are only
-        uniquely identifying users
+        Guilds in Discord represent an isolated collection of users and channels,
+        and are often referred to as "servers" in the UI.
 
         Valid forms of strreps:
-        user#discriminator      -> Person
-        #channel@guild_id       -> Room
+        @user#discriminator            -> Person
+        #channel                       -> Room (a uniquely identified channel on any guild)
+        #channel$guild_vanity_url_code -> Room (a channel on a specific guild)
 
-        :param string_representation:
+        :param text:  The text the represents an Identifier
         :return: Identifier
 
         Room Example: #general@12345678901234567 -> Sends a message to the
                    #general channel of the guild with id 12345678901234567
         """
-        if not string_representation:
-            raise ValueError("Empty strrep")
+        if not text:
+            raise ValueError("A string must be provided to build an identifier.")
 
-        if string_representation.startswith("#"):
-            strrep_split = string_representation.split("@")
-            return DiscordRoom(strrep_split[0][1:], int(strrep_split[1]))
+        log.debug(f"Build_identifier {text}")
 
-        if "#" in str(string_representation):
-            user, discriminator = str(string_representation).split("#")
-        else:
-            raise ValueError("No Discriminator")
-        log.debug(f"Build_identifier {string_representation}")
-        member = DiscordPerson.username_and_discriminator_to_userid(user, discriminator)
+        # Mentions are wrapped by <>
+        if text.startswith("<") and text.endswith(">"):
+            text = text[1:-1]
+            if text.startswith("@"):
+                return DiscordPerson(user_id=text[1:])
+            elif text.startswith("#"):
+                # channel id
+                return DiscordRoom(channel_id=text[1:])
+            else:
+                raise ValueError(f"Unsupport identification {text}")
+        # Raw text channel name start with #
+        elif text.startswith("#"):
+            if "@" in text:
+                channel_name, guild_id = text.split("@")
+                return DiscordRoom(channel_name[1:], guild_id)
+            else:
+                return DiscordRoom(text[1:])
+        elif "#" in text:
+            user, discriminator = text.split("#")
+            return DiscordPerson(user_id=member.id)
 
-        return DiscordPerson(user_id=member.id)
+        raise ValueError(f"Invalid representation {text}")
 
     def upload_file(self, msg, filename):
         with open(filename, "r") as f:
