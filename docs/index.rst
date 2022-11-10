@@ -18,7 +18,6 @@ The ``err-backend-discord`` backend lets you connect to the `Discord <https://di
    user_guide.rst
    developer_guide.rst
 
-
 Indices and tables
 ==================
 
