@@ -9,8 +9,8 @@ from errbot.backends.base import Person
 
 log = logging.getLogger(__name__)
 
-# Discord uses 18 digits for user, channel and server (guild) ids.
-RE_DISCORD_ID = re.compile(r"^[0-9]{18}$")
+# Discord uses 18 or more digits for user, channel and server (guild) ids.
+RE_DISCORD_ID = re.compile(r"^[0-9]{18}")
 
 try:
     import discord
@@ -59,7 +59,7 @@ class DiscordPerson(Person, DiscordSender):
         else:
             if username and discriminator:
                 member = DiscordPerson.username_and_discriminator_to_userid(username, discriminator)
-                self.user_id = member.id
+                self._user_id = member.id
             else:
                 raise ValueError("Username/discrimator pair or user id not provided.")
 
