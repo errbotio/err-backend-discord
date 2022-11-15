@@ -2,26 +2,11 @@ import asyncio
 import logging
 import sys
 
+from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
 from errbot.core import ErrBot
-from errbot.backends.base import (
-    Person,
-    Message,
-    Presence,
-    ONLINE,
-    OFFLINE,
-    AWAY,
-    DND,
-)
 
-from discordlib.person import (
-    DiscordSender,
-    DiscordPerson,
-)
-from discordlib.room import (
-    DiscordRoom,
-    DiscordRoomOccupant,
-    DiscordCategory,
-)
+from discordlib.person import DiscordPerson, DiscordSender
+from discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
 
 log = logging.getLogger("errbot-backend-discord")
 
@@ -124,19 +109,20 @@ class DiscordBackend(ErrBot):
         if msg.mentions:
             self.callback_mention(
                 err_msg,
-                [DiscordRoomOccupant(mention.id, msg.channel.id) for mention in msg.mentions],
+                [
+                    DiscordRoomOccupant(mention.id, msg.channel.id)
+                    for mention in msg.mentions
+                ],
             )
 
     def is_from_self(self, msg: Message) -> bool:
         """
         Test if message is from the bot instance.
         """
-        other = msg.frm
-
-        if not isinstance(other, DiscordPerson):
+        if not isinstance(msg.frm, DiscordPerson):
             return False
 
-        return other.id == self.bot_identifier.id
+        return msg.frm.id == self.bot_identifier.id
 
     async def on_member_update(self, before, after):
         """
@@ -145,7 +131,9 @@ class DiscordBackend(ErrBot):
         if before.status != after.status:
             person = DiscordPerson(after.id)
 
-            log.debug(f"Person {person} changed status to {after.status} from {before.status}")
+            log.debug(
+                f"Person {person} changed status to {after.status} from {before.status}"
+            )
             if after.status == discord.Status.online:
                 self.callback_presence(Presence(person, ONLINE))
             elif after.status == discord.Status.offline:
@@ -288,14 +276,24 @@ class DiscordBackend(ErrBot):
                 elif isinstance(intent, str):
                     bot_intents = apply_as_str(bot_intents, intent)
                 else:
-                    log.warning("Unkown intent type %s for '%s'", type(intent), str(intent))
+                    log.warning(
+                        "Unkown intent type %s for '%s'", type(intent), str(intent)
+                    )
         elif isinstance(self.intents, int):
             bot_intents = apply_as_int(bot_intents, self.intents)
         else:
             if self.intents is not None:
-                log.warning("Unsupported intent type %s for '%s'", type(self.intents), str(self.intents))
+                log.warning(
+                    "Unsupported intent type %s for '%s'",
+                    type(self.intents),
+                    str(self.intents),
+                )
 
-        log.info("Enabled intents - {}".format(", ".join([i[0] for i in list(bot_intents) if i[1]])))
+        log.info(
+            "Enabled intents - {}".format(
+                ", ".join([i[0] for i in list(bot_intents) if i[1]])
+            )
+        )
         log.info(
             "Disabled intents - {}".format(
                 ", ".join([i[0] for i in list(bot_intents) if i[1] is False])
@@ -363,7 +361,8 @@ class DiscordBackend(ErrBot):
 
     def rooms(self):
         return [
-            DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()
+            DiscordRoom.from_id(channel.id)
+            for channel in DiscordBackend.client.get_all_channels()
         ]
 
     @property
@@ -376,15 +375,18 @@ class DiscordBackend(ErrBot):
         and are often referred to as "servers" in the UI.
 
         Valid forms of strreps:
+        <@userid>                      -> Person
+        <#channelid>                   -> Room
         @user#discriminator            -> Person
         #channel                       -> Room (a uniquely identified channel on any guild)
-        #channel$guild_vanity_url_code -> Room (a channel on a specific guild)
+        #channel#guild_id              -> Room (a channel on a specific guild)
 
         :param text:  The text the represents an Identifier
         :return: Identifier
 
-        Room Example: #general@12345678901234567 -> Sends a message to the
-                   #general channel of the guild with id 12345678901234567
+        Room Example:
+            #general@12345678901234567 -> Sends a message to the
+            #general channel of the guild with id 12345678901234567
         """
         if not text:
             raise ValueError("A string must be provided to build an identifier.")
@@ -404,13 +406,15 @@ class DiscordBackend(ErrBot):
         # Raw text channel name start with #
         elif text.startswith("#"):
             if "@" in text:
-                channel_name, guild_id = text.split("@")
+                channel_name, guild_id = text.split("@", 1)
                 return DiscordRoom(channel_name[1:], guild_id)
             else:
                 return DiscordRoom(text[1:])
-        elif "#" in text:
-            user, discriminator = text.split("#")
-            return DiscordPerson(user_id=member.id)
+        # Raw text username starts with @
+        elif text.startswith("@"):
+            if "#" in text:
+                user, tag = text.split("#", 1)
+                return DiscordPerson(username=user, discriminator=tag)
 
         raise ValueError(f"Invalid representation {text}")
 
@@ -433,7 +437,12 @@ class DiscordBackend(ErrBot):
         mychannel = discord.utils.get(self.client.get_all_channels(), name=channelname)
 
         async def gethist(mychannel, before=None):
-            return [i async for i in self.client.logs_from(mychannel, limit=10, before=before)]
+            return [
+                i
+                async for i in self.client.logs_from(mychannel, limit=10, before=before)
+            ]
 
-        future = asyncio.run_coroutine_threadsafe(gethist(mychannel, before), loop=self.client.loop)
+        future = asyncio.run_coroutine_threadsafe(
+            gethist(mychannel, before), loop=self.client.loop
+        )
         return future.result(timeout=None)

@@ -14,7 +14,7 @@ keywords = [
 ]
 description = "Discord backend for Errbot"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 
 license = {text = "GPL-3.0"}
 

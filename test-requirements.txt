@@ -1,0 +1,4 @@
+errbot
+mock
+pytest
+tox
