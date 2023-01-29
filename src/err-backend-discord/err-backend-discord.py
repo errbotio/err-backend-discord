@@ -412,6 +412,7 @@ class DiscordBackend(ErrBot):
                 return DiscordRoom(text[1:])
         # Raw text username starts with @
         elif text.startswith("@"):
+            text = text[1:]
             if "#" in text:
                 user, tag = text.split("#", 1)
                 return DiscordPerson(username=user, discriminator=tag)

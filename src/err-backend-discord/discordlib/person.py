@@ -62,7 +62,7 @@ class DiscordPerson(Person, DiscordSender):
                     raise LookupError(
                         "The user {}#{} can't be found.  If you're certain the username "
                         "exists, check the spelling is correct and/or the bot has been "
-                        "granted the required intents and permissions to lookup memebers "
+                        "granted the required intents and permissions to lookup members "
                         "for the guild.".format(
                             username,
                             discriminator,
