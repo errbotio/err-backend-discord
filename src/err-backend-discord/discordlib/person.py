@@ -1,7 +1,6 @@
+import logging
 import re
 import sys
-import logging
-
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
 
@@ -9,8 +8,8 @@ from errbot.backends.base import Person
 
 log = logging.getLogger(__name__)
 
-# Discord uses 18 digits for user, channel and server (guild) ids.
-RE_DISCORD_ID = re.compile(r"^[0-9]{18}$")
+# Discord uses 18 or more digits for user, channel and server (guild) ids.
+RE_DISCORD_ID = re.compile(r"^[0-9]{18}")
 
 try:
     import discord
@@ -54,12 +53,22 @@ class DiscordPerson(Person, DiscordSender):
         if user_id:
             if not re.match(RE_DISCORD_ID, str(user_id)):
                 raise ValueError(f"Invalid Discord user id {type(user_id)} {user_id}.")
-
-            self._user_id = user_id
+            # cast required so that calls to discord module methods are handled correctly.
+            self._user_id = int(user_id)
         else:
             if username and discriminator:
                 member = DiscordPerson.username_and_discriminator_to_userid(username, discriminator)
-                self.user_id = member.id
+                if member is None:
+                    raise LookupError(
+                        "The user {}#{} can't be found.  If you're certain the username "
+                        "exists, check the spelling is correct and/or the bot has been "
+                        "granted the required intents and permissions to lookup members "
+                        "for the guild.".format(
+                            username,
+                            discriminator,
+                        )
+                    )
+                self._user_id = member.id
             else:
                 raise ValueError("Username/discrimator pair or user id not provided.")
 

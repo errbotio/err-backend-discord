@@ -51,7 +51,7 @@ Room Class
         ``??``, "??", ``aclattr :str:``, "returns the unique identifier that will be used for ACL matches."
         ``??``, "??", ``exists :bool:``, "Returns ``True`` if the room exists, `False` otherwise."
         ``??``, "??", ``joined :bool:``, "Returns ``True`` if the room has been joined, `False` otherwise."
-        ``??``, "??", ``topic :bool:``, "Returns the topic (a string) if one is set, ``None`` if notopic has been set at all."
+        ``??``, "??", ``topic :bool:``, "Returns the topic (a string) if one is set, ``None`` if no topic has been set at all."
         ``??``, "??", ``occupants :list:``, "Returns a list of occupant identities."
         ``??``, "??", ``invite()``, "Invite one or more people into the room."
 
