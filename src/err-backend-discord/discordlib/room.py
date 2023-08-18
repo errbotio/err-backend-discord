@@ -1,20 +1,10 @@
-import sys
 import logging
-
+import sys
 from typing import List, Optional, Union
 
+from errbot.backends.base import Room, RoomError, RoomOccupant
 
-from errbot.backends.base import (
-    Room,
-    RoomOccupant,
-    RoomError,
-)
-
-from discordlib.person import (
-    DiscordSender,
-    DiscordPerson,
-)
-
+from discordlib.person import DiscordPerson, DiscordSender
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +33,9 @@ class DiscordRoom(Room, DiscordSender):
 
         return cls(channel.name, channel.guild.id)
 
-    def __init__(self, channel_name: str = None, guild_id: str = None, channel_id: str = None):
+    def __init__(
+        self, channel_name: str = None, guild_id: str = None, channel_id: str = None
+    ):
         """
         Allows to specify an existing room (via name + guild or via id) or allows the
         creation of a future room by specifying a name and guild to create the channel in.
@@ -52,20 +44,25 @@ class DiscordRoom(Room, DiscordSender):
         :param guild_id:
         :param channel_id:
         """
-
+        self.discord_channel = None
         if channel_id:
             self._channel_id = int(channel_id)
-            self._channel_name = None
-            self._guild_id = None
+            self.discord_channel = DiscordRoom.client.get_channel(self._channel_id)
+        elif guild_id and channel_name:
+            guild = DiscordRoom.client.get_guild(int(guild_id))
+            if guild:
+                channel = [channel for channel in guild.channels if channel_name == channel.name]
+                if len(channel) == 0:
+                    ValueError(f"Failed to find channel {channel_name} in guild {guild.name}")
+                if len(channel) > 1:
+                    ValueError(f"More than one channel matched {channel_name} in guild {guild.name}")
+                self.discord_channel = channel[0]
+            else:
+                raise ValueError(f"Failed to get guild id {guild_id}")
         else:
-            if DiscordRoom.client.get_guild(int(guild_id)) is None:
-                raise ValueError(f"Can't find guild id {guild_id} to init DiscordRoom")
-
-            self._guild_id = guild_id
-            self._channel_name = channel_name
-            self._channel_id = self.channel_name_to_id()  # Can be None if channel doesn't exist
-
-        self.discord_channel = DiscordRoom.client.get_channel(self._channel_id)
+            raise ValueError(
+                "A channel id or channel name + guild id is required for a Room."
+            )
 
     def get_discord_object(self):
         return self.discord_channel
@@ -86,7 +83,7 @@ class DiscordRoom(Room, DiscordSender):
         ]
 
         if len(matching) == 0:
-            return None
+            raise ValueError(f"Failed to look up {channel} on server/guild {self._guild_id}!")
 
         if len(matching) > 1:
             log.warning(
@@ -94,7 +91,7 @@ class DiscordRoom(Room, DiscordSender):
                 f"name {self._channel_name} in guild id {self._guild_id}"
             )
 
-        return matching[0].id
+        return int(matching[0].id)
 
     @property
     def created_at(self):
@@ -109,7 +106,9 @@ class DiscordRoom(Room, DiscordSender):
                 raise RuntimeError("Can't invite non Discord Users")
 
             asyncio.run_coroutine_threadsafe(
-                self.discord_channel.set_permissions(identifier.discord_user(), read_messages=True),
+                self.discord_channel.set_permissions(
+                    identifier.discord_user(), read_messages=True
+                ),
                 loop=DiscordRoom.client.loop,
             )
 
@@ -140,9 +139,9 @@ class DiscordRoom(Room, DiscordSender):
             log.warning(f"Tried to create {self._channel_name} which already exists.")
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordRoom.client.loop).result(
-            timeout=5
-        )
+        asyncio.run_coroutine_threadsafe(
+            self.create_room(), loop=DiscordRoom.client.loop
+        ).result(timeout=5)
 
     def destroy(self) -> None:
         if not self.exists:
@@ -190,7 +189,10 @@ class DiscordRoom(Room, DiscordSender):
 
     @property
     def exists(self) -> bool:
-        return None not in [self._channel_id, DiscordRoom.client.get_channel(self._channel_id)]
+        return None not in [
+            self._channel_id,
+            DiscordRoom.client.get_channel(self._channel_id),
+        ]
 
     @property
     def guild(self):
