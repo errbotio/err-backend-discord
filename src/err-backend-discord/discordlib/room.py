@@ -31,7 +31,7 @@ class DiscordRoom(Room, DiscordSender):
         if channel is None:
             raise ValueError(f"Channel id:{channel_id} doesn't exist!")
 
-        return cls(channel.name, channel.guild.id)
+        return cls(channel.name, channel.guild.id, channel.id)
 
     def __init__(
         self, channel_name: str = None, guild_id: str = None, channel_id: str = None
