@@ -39,21 +39,21 @@ jobs:
         tox -e py
 
     - name: Check Distribution
-      if: ${{ matrix.python-version == "3.10" }}
+      if: matrix.python-version == "3.10"
       run: |
         tox -e dist-check
 
     - name: Codestyle
-      if: ${{ matrix.python-version == "3.10" }}
+      if: matrix.python-version == "3.10"
       run: |
         tox -e codestyle
 
     - name: Lint - sort
-      if: ${{ matrix.python-version == "3.10" }}
+      if: matrix.python-version == "3.10"
       run: |
         tox -e sort
 
     - name: Security
-      if: ${{ matrix.python-version == "3.10" }}
+      if: matrix.python-version == "3.10"
       run: |
         tox -e security
