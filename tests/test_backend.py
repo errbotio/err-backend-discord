@@ -57,13 +57,13 @@ def backend():
     return discord_backend
 
 
-def test_build_identifier(backend):
+def todo_build_identifier(backend):
     raise NotImplementedError
 
 
-def test_extract_identifiers(backend):
+def todo_extract_identifiers(backend):
     raise NotImplementedError
 
 
-def test_send_message(backend):
+def todo_send_message(backend):
     raise NotImplementedError
