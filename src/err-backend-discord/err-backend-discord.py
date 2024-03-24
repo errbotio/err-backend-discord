@@ -109,10 +109,7 @@ class DiscordBackend(ErrBot):
         if msg.mentions:
             self.callback_mention(
                 err_msg,
-                [
-                    DiscordRoomOccupant(mention.id, msg.channel.id)
-                    for mention in msg.mentions
-                ],
+                [DiscordRoomOccupant(mention.id, msg.channel.id) for mention in msg.mentions],
             )
 
     def is_from_self(self, msg: Message) -> bool:
@@ -131,9 +128,7 @@ class DiscordBackend(ErrBot):
         if before.status != after.status:
             person = DiscordPerson(after.id)
 
-            log.debug(
-                f"Person {person} changed status to {after.status} from {before.status}"
-            )
+            log.debug(f"Person {person} changed status to {after.status} from {before.status}")
             if after.status == discord.Status.online:
                 self.callback_presence(Presence(person, ONLINE))
             elif after.status == discord.Status.offline:
@@ -276,9 +271,7 @@ class DiscordBackend(ErrBot):
                 elif isinstance(intent, str):
                     bot_intents = apply_as_str(bot_intents, intent)
                 else:
-                    log.warning(
-                        "Unkown intent type %s for '%s'", type(intent), str(intent)
-                    )
+                    log.warning("Unknown intent type %s for '%s'", type(intent), str(intent))
         elif isinstance(self.intents, int):
             bot_intents = apply_as_int(bot_intents, self.intents)
         else:
@@ -290,9 +283,7 @@ class DiscordBackend(ErrBot):
                 )
 
         log.info(
-            "Enabled intents - {}".format(
-                ", ".join([i[0] for i in list(bot_intents) if i[1]])
-            )
+            "Enabled intents - {}".format(", ".join([i[0] for i in list(bot_intents) if i[1]]))
         )
         log.info(
             "Disabled intents - {}".format(
@@ -361,8 +352,7 @@ class DiscordBackend(ErrBot):
 
     def rooms(self):
         return [
-            DiscordRoom.from_id(channel.id)
-            for channel in DiscordBackend.client.get_all_channels()
+            DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()
         ]
 
     @property
@@ -414,14 +404,13 @@ class DiscordBackend(ErrBot):
         elif text.startswith("@"):
             text = text[1:]
             if "#" in text:
-                user, tag = text.split("#", 1)
-                return DiscordPerson(username=user, discriminator=tag)
+                user, discriminator = text.split("#",1)
+                return DiscordPerson(username=user, discriminator=discriminator)
 
         raise ValueError(f"Invalid representation {text}")
 
     def upload_file(self, msg, filename):
         with open(filename, "r") as f:
-
             dest = None
             if msg.is_direct:
                 dest = DiscordPerson(msg.frm.id).get_discord_object()
@@ -438,12 +427,7 @@ class DiscordBackend(ErrBot):
         mychannel = discord.utils.get(self.client.get_all_channels(), name=channelname)
 
         async def gethist(mychannel, before=None):
-            return [
-                i
-                async for i in self.client.logs_from(mychannel, limit=10, before=before)
-            ]
+            return [i async for i in self.client.logs_from(mychannel, limit=10, before=before)]
 
-        future = asyncio.run_coroutine_threadsafe(
-            gethist(mychannel, before), loop=self.client.loop
-        )
+        future = asyncio.run_coroutine_threadsafe(gethist(mychannel, before), loop=self.client.loop)
         return future.result(timeout=None)
