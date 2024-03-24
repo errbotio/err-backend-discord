@@ -18,25 +18,19 @@ def discord_room():
 def test_create_room_without_arguments():
     with pytest.raises(ValueError) as excinfo:
         DiscordRoom()
-    assert "A name or channel id + guild id is required to create a Room." in str(
-        excinfo.value
-    )
+    assert "A name or channel id + guild id is required to create a Room." in str(excinfo.value)
 
 
 def test_create_room_with_name_only():
     with pytest.raises(ValueError) as excinfo:
         DiscordRoom(channel_name="#testing_ground")
-    assert "A name or channel id + guild id is required to create a Room." in str(
-        excinfo.value
-    )
+    assert "A name or channel id + guild id is required to create a Room." in str(excinfo.value)
 
 
 def test_create_room_with_guild_only():
     with pytest.raises(ValueError) as excinfo:
         DiscordRoom(guild_id="1234567890123456789")
-    assert "A name or channel id + guild id is required to create a Room." in str(
-        excinfo.value
-    )
+    assert "A name or channel id + guild id is required to create a Room." in str(excinfo.value)
 
 
 def test_create_room_with_id(discord_room):

@@ -33,9 +33,7 @@ class DiscordRoom(Room, DiscordSender):
 
         return cls(channel.name, channel.guild.id, channel.id)
 
-    def __init__(
-        self, channel_name: str = None, guild_id: str = None, channel_id: str = None
-    ):
+    def __init__(self, channel_name: str = None, guild_id: str = None, channel_id: str = None):
         """
         Allows to specify an existing room (via name + guild or via id) or allows the
         creation of a future room by specifying a name and guild to create the channel in.
@@ -55,14 +53,14 @@ class DiscordRoom(Room, DiscordSender):
                 if len(channel) == 0:
                     ValueError(f"Failed to find channel {channel_name} in guild {guild.name}")
                 if len(channel) > 1:
-                    ValueError(f"More than one channel matched {channel_name} in guild {guild.name}")
+                    ValueError(
+                        f"More than one channel matched {channel_name} in guild {guild.name}"
+                    )
                 self.discord_channel = channel[0]
             else:
                 raise ValueError(f"Failed to get guild id {guild_id}")
         else:
-            raise ValueError(
-                "A channel id or channel name + guild id is required for a Room."
-            )
+            raise ValueError("A channel id or channel name + guild id is required for a Room.")
 
     def get_discord_object(self):
         return self.discord_channel
@@ -106,9 +104,7 @@ class DiscordRoom(Room, DiscordSender):
                 raise RuntimeError("Can't invite non Discord Users")
 
             asyncio.run_coroutine_threadsafe(
-                self.discord_channel.set_permissions(
-                    identifier.discord_user(), read_messages=True
-                ),
+                self.discord_channel.set_permissions(identifier.discord_user(), read_messages=True),
                 loop=DiscordRoom.client.loop,
             )
 
@@ -139,9 +135,9 @@ class DiscordRoom(Room, DiscordSender):
             log.warning(f"Tried to create {self._channel_name} which already exists.")
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(
-            self.create_room(), loop=DiscordRoom.client.loop
-        ).result(timeout=5)
+        asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordRoom.client.loop).result(
+            timeout=5
+        )
 
     def destroy(self) -> None:
         if not self.exists:

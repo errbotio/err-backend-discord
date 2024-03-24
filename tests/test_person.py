@@ -42,61 +42,61 @@ def test_create_person_username_and_discriminator():
     DiscordPerson(username="someone", discriminator="1234")
 
 
-def test_wrong_channelid():
+def todo_wrong_channelid():
     raise NotImplementedError
 
 
-def test_username():
+def todo_username():
     raise NotImplementedError
 
 
-def test_username_not_found():
+def todo_username_not_found():
     raise NotImplementedError
 
 
-def test_fullname():
+def todo_fullname():
     raise NotImplementedError
 
 
-def test_fullname_not_found():
+def todo_fullname_not_found():
     raise NotImplementedError
 
 
-def test_email():
+def todo_email():
     raise NotImplementedError
 
 
-def test_email_not_found():
+def todo_email_not_found():
     raise NotImplementedError
 
 
-def test_channelname():
+def todo_channelname():
     raise NotImplementedError
 
 
-def test_channelname_channel_not_found():
+def todo_channelname_channel_not_found():
     raise NotImplementedError
 
 
-def test_domain():
+def todo_domain():
     raise NotImplementedError
 
 
-def test_aclattr():
+def todo_aclattr():
     raise NotImplementedError
 
 
-def test_person():
+def todo_person():
     raise NotImplementedError
 
 
-def test_to_string():
+def todo_to_string():
     raise NotImplementedError
 
 
-def test_equal():
+def todo_equal():
     raise NotImplementedError
 
 
-def test_hash():
+def todo_hash():
     raise NotImplementedError

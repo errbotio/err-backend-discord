@@ -38,17 +38,19 @@ class DiscordSender(ABC, discord.abc.Snowflake):
 
 class DiscordPerson(Person, DiscordSender):
     @classmethod
-    def username_and_discriminator_to_userid(cls, username: str, discriminator: str) -> str:
-        return discord.utils.find(
-            lambda m: m.name == username and m.discriminator == discriminator,
-            DiscordPerson.client.get_all_members(),
-        )
+    def resolve_username(cls, username: str, discriminator: str) -> str:
+        for m in DiscordPerson.client.get_all_members():
+            if m.name == username:
+                # Discord dropped discriminators for user accounts but kept them for bot accounts.
+                if m.discriminator in ["0", discriminator]:
+                    return m
+        return None
 
-    def __init__(self, user_id: str = None, username: str = None, discriminator: str = None):
+    def __init__(self, user_id: str = None, username: str = None, discriminator: str = "0"):
         """
         @user_id: _must_ be a string representation of a Discord Snowflake (an integer).
         @username: Discord username.
-        @discriminator: Discord discriminator to uniquely identify the username.
+        @discriminator: Discord discriminator to uniquely identify the username. (default to 0 since discord dropped them for username)
         """
         if user_id:
             if not re.match(RE_DISCORD_ID, str(user_id)):
@@ -57,7 +59,7 @@ class DiscordPerson(Person, DiscordSender):
             self._user_id = int(user_id)
         else:
             if username and discriminator:
-                member = DiscordPerson.username_and_discriminator_to_userid(username, discriminator)
+                member = DiscordPerson.resolve_username(username, discriminator)
                 if member is None:
                     raise LookupError(
                         "The user {}#{} can't be found.  If you're certain the username "
@@ -72,7 +74,7 @@ class DiscordPerson(Person, DiscordSender):
             else:
                 raise ValueError("Username/discrimator pair or user id not provided.")
 
-        self.discord_user = DiscordPerson.client.get_user(int(self._user_id))
+        self.discord_user = DiscordPerson.client.get_user(self._user_id)
         if self.discord_user is None:
             raise ValueError(f"Failed to get the user {self._user_id}")
 
