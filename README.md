@@ -9,4 +9,3 @@ Visit the [official documentation](https://err-backend-discord.readthedocs.io/) 
  - Configuration
  - User Guide
  - Developer Guide
-
