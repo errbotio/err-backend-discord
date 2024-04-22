@@ -89,6 +89,13 @@ class DiscordBackend(ErrBot):
         """
         err_msg = Message(msg.content, extras=msg.embeds)
 
+        # if the message coming in is from a webhook, it will not have a username
+        # this will cause the whole process to fail.  In those cases, return without
+        # processing.
+
+        if msg.author.bot:
+            return
+
         if isinstance(msg.channel, discord.abc.PrivateChannel):
             err_msg.frm = DiscordPerson(msg.author.id)
             err_msg.to = self.bot_identifier
