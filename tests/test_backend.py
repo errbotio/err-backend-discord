@@ -1,3 +1,4 @@
+import importlib  # Use importlib because of "-" in module name.
 import json
 import logging
 import os
@@ -5,15 +6,10 @@ import pdb
 import sys
 from tempfile import mkdtemp
 
-
-import importlib  # Use importlib because of "-" in module name.
 import pytest
-
 from discordlib.room import DiscordRoom
-
 from errbot.backends.base import Message
 from errbot.bootstrap import bot_config_defaults
-
 from mock import MagicMock
 
 log = logging.getLogger(__name__)

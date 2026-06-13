@@ -8,8 +8,8 @@ from errbot.backends.base import Person
 
 log = logging.getLogger(__name__)
 
-# Discord uses 18 or more digits for user, channel and server (guild) ids.
-RE_DISCORD_ID = re.compile(r"^[0-9]{18}")
+# Discord uses 17 or more digits for user, channel and server (guild) ids.
+RE_DISCORD_ID = re.compile(r"^[0-9]{17,21}$")
 
 try:
     import discord

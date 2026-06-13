@@ -3,9 +3,8 @@ import logging
 import sys
 from typing import List, Optional, Union
 
-from errbot.backends.base import Room, RoomError, RoomOccupant
-
 from discordlib.person import DiscordPerson, DiscordSender
+from errbot.backends.base import Room, RoomError, RoomOccupant
 
 log = logging.getLogger(__name__)
 
@@ -145,9 +144,9 @@ class DiscordRoom(Room, DiscordSender):
             log.warning(f"Tried to create {self._channel_name} which already exists.")
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordRoom.discord_client.loop).result(
-            timeout=5
-        )
+        asyncio.run_coroutine_threadsafe(
+            self.create_room(), loop=DiscordRoom.discord_client.loop
+        ).result(timeout=5)
 
     def destroy(self) -> None:
         if not self.exists:

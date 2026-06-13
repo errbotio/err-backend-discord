@@ -2,11 +2,10 @@ import asyncio
 import logging
 import sys
 
-from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
-from errbot.core import ErrBot
-
 from discordlib.person import DiscordPerson, DiscordSender
 from discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
+from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
+from errbot.core import ErrBot
 
 log = logging.getLogger("errbot-backend-discord")
 
@@ -326,7 +325,6 @@ class DiscordBackend(ErrBot):
             self.on_message,
             self.on_member_update,
             self.on_message_edit,
-            self.on_member_update,
         ]:
             DiscordBackend.discord_client.event(func)
 
@@ -370,7 +368,8 @@ class DiscordBackend(ErrBot):
 
     def rooms(self):
         return [
-            DiscordRoom.from_id(channel.id) for channel in DiscordBackend.discord_client.get_all_channels()
+            DiscordRoom.from_id(channel.id)
+            for channel in DiscordBackend.discord_client.get_all_channels()
         ]
 
     @property
@@ -422,7 +421,7 @@ class DiscordBackend(ErrBot):
         elif text.startswith("@"):
             text = text[1:]
             if "#" in text:
-                user, discriminator = text.split("#",1)
+                user, discriminator = text.split("#", 1)
                 return DiscordPerson(username=user, discriminator=discriminator)
 
         raise ValueError(f"Invalid representation {text}")

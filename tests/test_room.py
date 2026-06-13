@@ -1,9 +1,8 @@
 import logging
 
 import pytest
-from mock import MagicMock
-
 from discordlib.room import DiscordRoom
+from mock import MagicMock
 
 log = logging.getLogger(__name__)
 

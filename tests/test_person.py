@@ -2,9 +2,8 @@ import logging
 import re
 
 import pytest
-from mock import MagicMock, patch
-
 from discordlib.person import DiscordPerson
+from mock import MagicMock, patch
 
 log = logging.getLogger(__name__)
 
@@ -43,12 +42,20 @@ def test_create_person_with_id(mock_discord_client):
     assert person.id == 123456789012345678
 
 
+def test_create_person_with_17_digit_id(mock_discord_client):
+    mock_user = MagicMock()
+    mock_user.id = 12345678901234567
+    mock_discord_client.get_user.return_value = mock_user
+    person = DiscordPerson(user_id="12345678901234567")
+    assert person.id == 12345678901234567
+
+
 def test_create_person_username_and_discriminator(mock_discord_client):
     mock_user = MagicMock()
     mock_user.id = 123456789012345678
     mock_user.name = "someone"
     mock_user.discriminator = "1234"
-    
+
     with patch.object(DiscordPerson, "resolve_username", return_value=mock_user):
         mock_discord_client.get_user.return_value = mock_user
         person = DiscordPerson(username="someone", discriminator="1234")
