@@ -1,7 +1,7 @@
 import logging
 
 import pytest
-from discordlib.room import DiscordRoom
+from err_backend_discord.discordlib.room import DiscordRoom
 from mock import MagicMock
 
 log = logging.getLogger(__name__)

@@ -2,17 +2,17 @@ import asyncio
 import logging
 import sys
 
-from discordlib.person import DiscordPerson, DiscordSender
-from discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
+from .discordlib.person import DiscordPerson, DiscordSender
+from .discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
 from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
 from errbot.core import ErrBot
 
-log = logging.getLogger("errbot-backend-discord")
+log = logging.getLogger("err_backend_discord")
 
 try:
     import discord
 except ImportError:
-    log.exception("Could not start err-backend-discord")
+    log.exception("Could not start err_backend_discord")
     log.fatal("The required discord module could not be found.")
     sys.exit(1)
 

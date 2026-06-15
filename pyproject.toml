@@ -27,6 +27,9 @@ dependencies = [
     "discord.py==2.7.1",
 ]
 
+[project.entry-points."errbot.backend_plugins"]
+discord = "err_backend_discord:DiscordBackend"
+
 [project.urls]
 "Homepage" = "https://err-backend-discord.readthedocs.io"
 "Bug Tracker" = "https://github.com/errbotio/err-backend-discord/issues"

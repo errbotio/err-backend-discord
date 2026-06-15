@@ -14,7 +14,7 @@ RE_DISCORD_ID = re.compile(r"^[0-9]{17,21}$")
 try:
     import discord
 except ImportError:
-    log.exception("Could not start err-backend-discord")
+    log.exception("Could not start err_backend_discord")
     log.fatal("The required discord module could not be found.")
     sys.exit(1)
 

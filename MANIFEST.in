@@ -1,1 +1,1 @@
-include src/err-backend-discord/*.plug
+include src/err_backend_discord/*.plug

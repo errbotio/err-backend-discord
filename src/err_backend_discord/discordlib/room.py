@@ -3,7 +3,7 @@ import logging
 import sys
 from typing import List, Optional, Union
 
-from discordlib.person import DiscordPerson, DiscordSender
+from .person import DiscordPerson, DiscordSender
 from errbot.backends.base import Room, RoomError, RoomOccupant
 
 log = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 try:
     import discord
 except ImportError:
-    log.exception("Could not start err-backend-discord")
+    log.exception("Could not start err_backend_discord")
     log.fatal("The required discord module could not be found.")
     sys.exit(1)
 

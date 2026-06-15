@@ -2,7 +2,7 @@ import logging
 import re
 
 import pytest
-from discordlib.person import DiscordPerson
+from err_backend_discord.discordlib.person import DiscordPerson
 from mock import MagicMock, patch
 
 log = logging.getLogger(__name__)
@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 @pytest.fixture(autouse=True)
 def mock_discord_client():
-    with patch("discordlib.person.DiscordPerson.discord_client", MagicMock()) as mock:
+    with patch("err_backend_discord.discordlib.person.DiscordPerson.discord_client", MagicMock()) as mock:
         yield mock
 
 
