@@ -2,8 +2,9 @@ import logging
 import re
 
 import pytest
-from err_backend_discord.discordlib.person import DiscordPerson
 from mock import MagicMock, patch
+
+from err_backend_discord.discordlib.person import DiscordPerson
 
 log = logging.getLogger(__name__)
 

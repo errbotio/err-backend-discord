@@ -2,10 +2,11 @@ import asyncio
 import logging
 import sys
 
-from .discordlib.person import DiscordPerson, DiscordSender
-from .discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
 from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
 from errbot.core import ErrBot
+
+from .discordlib.person import DiscordPerson, DiscordSender
+from .discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
 
 log = logging.getLogger("err_backend_discord")
 
@@ -368,8 +369,7 @@ class DiscordBackend(ErrBot):
 
     def rooms(self):
         return [
-            DiscordRoom.from_id(channel.id)
-            for channel in DiscordBackend.client.get_all_channels()
+            DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()
         ]
 
     @property
@@ -446,7 +446,5 @@ class DiscordBackend(ErrBot):
         async def gethist(mychannel, before=None):
             return [i async for i in mychannel.history(limit=10, before=before)]
 
-        future = asyncio.run_coroutine_threadsafe(
-            gethist(mychannel, before), loop=self.client.loop
-        )
+        future = asyncio.run_coroutine_threadsafe(gethist(mychannel, before), loop=self.client.loop)
         return future.result(timeout=None)

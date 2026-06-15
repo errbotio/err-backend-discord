@@ -6,10 +6,11 @@ import sys
 from tempfile import mkdtemp
 
 import pytest
-from err_backend_discord.discordlib.room import DiscordRoom
 from errbot.backends.base import Message
 from errbot.bootstrap import bot_config_defaults
 from mock import MagicMock
+
+from err_backend_discord.discordlib.room import DiscordRoom
 
 log = logging.getLogger(__name__)
 
