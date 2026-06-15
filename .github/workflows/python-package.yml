@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -31,8 +31,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r test-requirements.txt
-        # Temp fix for errbot py3.8 wheel on pypi missing dependency
-        pip install graphlib-backport==1.0.3  
         errbot --init
         cp tests/config-ci.py config.py
 
@@ -41,21 +39,21 @@ jobs:
         tox -e py
 
     - name: Check Distribution
-      if: matrix.python-version == 3.10
+      if: matrix.python-version == 3.12
       run: |
         tox -e dist-check
 
     - name: Codestyle
-      if: matrix.python-version == 3.10
+      if: matrix.python-version == 3.12
       run: |
         tox -e codestyle
 
     - name: Lint - sort
-      if: matrix.python-version == 3.10
+      if: matrix.python-version == 3.12
       run: |
         tox -e sort
 
     - name: Security
-      if: matrix.python-version == 3.10
+      if: matrix.python-version == 3.12
       run: |
         tox -e security

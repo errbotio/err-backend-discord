@@ -2,11 +2,10 @@ import asyncio
 import logging
 import sys
 
-from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
-from errbot.core import ErrBot
-
 from discordlib.person import DiscordPerson, DiscordSender
 from discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
+from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
+from errbot.core import ErrBot
 
 log = logging.getLogger("errbot-backend-discord")
 
@@ -32,7 +31,7 @@ class DiscordBackend(ErrBot):
     Discord backend for Errbot.
     """
 
-    client = None
+    discord_client = None
 
     def __init__(self, config):
         super().__init__(config)
@@ -63,18 +62,18 @@ class DiscordBackend(ErrBot):
 
     async def on_ready(self):
         """
-        Discord client ready event handler
+        Discord discord_client ready event handler
         """
         # Call connect only after successfully connected and ready to service Discord events.
         self.connect_callback()
 
         log.debug(
-            f"Logged in as {DiscordBackend.client.user.name}, {DiscordBackend.client.user.id}"
+            f"Logged in as {DiscordBackend.discord_client.user.name}, {DiscordBackend.discord_client.user.id}"
         )
         if self.bot_identifier is None:
-            self.bot_identifier = DiscordPerson(DiscordBackend.client.user.id)
+            self.bot_identifier = DiscordPerson(DiscordBackend.discord_client.user.id)
 
-        for channel in DiscordBackend.client.get_all_channels():
+        for channel in DiscordBackend.discord_client.get_all_channels():
             log.debug(f"Found channel: {channel}")
 
     async def on_message_edit(self, before, after):
@@ -159,11 +158,11 @@ class DiscordBackend(ErrBot):
         :param room:
         :return:
         """
-        if len(DiscordBackend.client.guilds) == 0:
+        if len(DiscordBackend.discord_client.guilds) == 0:
             log.error(f"Unable to join room '{room}' because no guilds were found!")
             return None
 
-        guild = DiscordBackend.client.guilds[0]
+        guild = DiscordBackend.discord_client.guilds[0]
 
         room_name = room
         if room_name.startswith("##"):
@@ -192,7 +191,7 @@ class DiscordBackend(ErrBot):
             for i in range(0, len(msg.body), self.message_size_limit)
         ]:
             asyncio.run_coroutine_threadsafe(
-                msg.to.send(content=message), loop=DiscordBackend.client.loop
+                msg.to.send(content=message), loop=DiscordBackend.discord_client.loop
             )
 
     def send_card(self, card):
@@ -223,7 +222,7 @@ class DiscordBackend(ErrBot):
                 em.add_field(name=key, value=value, inline=True)
 
         asyncio.run_coroutine_threadsafe(
-            recipient.send(embed=em), loop=DiscordBackend.client.loop
+            recipient.send(embed=em), loop=DiscordBackend.discord_client.loop
         ).result(5)
 
     def build_reply(self, mess, text=None, private=False, threaded=False):
@@ -247,13 +246,22 @@ class DiscordBackend(ErrBot):
 
         def apply_as_int(bot_intents, intent):
             if intent >= 0:
-                bot_intents._set_flag(intent, True)
+                if intent < 64:  # Assume bit index
+                    bot_intents._set_flag(intent, True)
+                else:  # Assume bitmask
+                    bot_intents.value |= intent
             else:
                 intent *= -1
-                bot_intents._set_flag(intent, False)
+                if intent < 64:
+                    bot_intents._set_flag(intent, False)
+                else:
+                    bot_intents.value &= ~intent
             return bot_intents
 
         def apply_as_str(bot_intents, intent):
+            if intent.isdigit() or (intent.startswith("-") and intent[1:].isdigit()):
+                return apply_as_int(bot_intents, int(intent))
+
             toggle = True
             if intent.startswith("-"):
                 toggle = False
@@ -281,6 +289,8 @@ class DiscordBackend(ErrBot):
                     log.warning("Unknown intent type %s for '%s'", type(intent), str(intent))
         elif isinstance(self.intents, int):
             bot_intents = apply_as_int(bot_intents, self.intents)
+        elif isinstance(self.intents, str):
+            bot_intents = apply_as_str(bot_intents, self.intents)
         else:
             if self.intents is not None:
                 log.warning(
@@ -299,15 +309,15 @@ class DiscordBackend(ErrBot):
         )
         return bot_intents
 
-    def initialise_client(self):
+    def initialise_discord_client(self):
         """
-        Initialise discord client.  This function is called whenever the serve_once
+        Initialise discord discord_client.  This function is called whenever the serve_once
         is restarted.  This involves initialising the intents, callback handlers
-        and dependency injection for classes that use the discord client.
+        and dependency injection for classes that use the discord discord_client.
         """
 
         bot_intents = self.config_intents()
-        DiscordBackend.client = discord.Client(intents=bot_intents)
+        DiscordBackend.discord_client = discord.Client(intents=bot_intents)
 
         # Register discord event coroutines.
         for func in [
@@ -315,35 +325,34 @@ class DiscordBackend(ErrBot):
             self.on_message,
             self.on_member_update,
             self.on_message_edit,
-            self.on_member_update,
         ]:
-            DiscordBackend.client.event(func)
+            DiscordBackend.discord_client.event(func)
 
-        # Use dependency injection to make discord client available to submodule classes.
-        DiscordCategory.client = DiscordBackend.client
-        DiscordRoomOccupant.client = DiscordBackend.client
-        DiscordRoom.client = DiscordBackend.client
-        DiscordPerson.client = DiscordBackend.client
-        DiscordSender.client = DiscordBackend.client
+        # Use dependency injection to make discord discord_client available to submodule classes.
+        DiscordCategory.discord_client = DiscordBackend.discord_client
+        DiscordRoomOccupant.discord_client = DiscordBackend.discord_client
+        DiscordRoom.discord_client = DiscordBackend.discord_client
+        DiscordPerson.discord_client = DiscordBackend.discord_client
+        DiscordSender.discord_client = DiscordBackend.discord_client
 
     def serve_once(self):
         """
-        Initialise discord client and establish connection.
+        Initialise discord discord_client and establish connection.
         """
 
-        async def start_client(token):
+        async def start_discord_client(token):
             """
-            Start the discord client using asynchronous event loop.
+            Start the discord discord_client using asynchronous event loop.
             """
-            async with DiscordBackend.client:
-                await DiscordBackend.client.start(token)
+            async with DiscordBackend.discord_client:
+                await DiscordBackend.discord_client.start(token)
 
         try:
-            self.initialise_client()
+            self.initialise_discord_client()
 
-            # Discord.py 2.0's client.run convenience method traps KeyboardInterrupt so it can not be used.
+            # Discord.py 2.0's discord_client.run convenience method traps KeyboardInterrupt so it can not be used.
             # The documented manual method is used here so errbot can handle KeyboardInterrupt exceptions.
-            asyncio.run(start_client(self.token))
+            asyncio.run(start_discord_client(self.token))
 
         except KeyboardInterrupt:
             self.disconnect_callback()
@@ -352,14 +361,15 @@ class DiscordBackend(ErrBot):
     def change_presence(self, status: str = ONLINE, message: str = ""):
         log.debug(f'Presence changed to {status} and activity "{message}".')
         activity = discord.Activity(name=message)
-        DiscordBackend.client.change_presence(status=status, activity=activity)
+        DiscordBackend.discord_client.change_presence(status=status, activity=activity)
 
     def prefix_groupchat_reply(self, message, identifier: Person):
         message.body = f"@{identifier.nick} {message.body}"
 
     def rooms(self):
         return [
-            DiscordRoom.from_id(channel.id) for channel in DiscordBackend.client.get_all_channels()
+            DiscordRoom.from_id(channel.id)
+            for channel in DiscordBackend.discord_client.get_all_channels()
         ]
 
     @property
@@ -411,7 +421,7 @@ class DiscordBackend(ErrBot):
         elif text.startswith("@"):
             text = text[1:]
             if "#" in text:
-                user, discriminator = text.split("#",1)
+                user, discriminator = text.split("#", 1)
                 return DiscordPerson(username=user, discriminator=discriminator)
 
         raise ValueError(f"Invalid representation {text}")
@@ -427,14 +437,16 @@ class DiscordBackend(ErrBot):
             log.info(f"Sending file {filename} to user {msg.frm}")
             asyncio.run_coroutine_threadsafe(
                 dest.send(file=discord.File(f, filename=filename)),
-                loop=self.client.loop,
+                loop=self.discord_client.loop,
             )
 
     def history(self, channelname, before=None):
-        mychannel = discord.utils.get(self.client.get_all_channels(), name=channelname)
+        mychannel = discord.utils.get(self.discord_client.get_all_channels(), name=channelname)
 
         async def gethist(mychannel, before=None):
-            return [i async for i in self.client.logs_from(mychannel, limit=10, before=before)]
+            return [i async for i in mychannel.history(limit=10, before=before)]
 
-        future = asyncio.run_coroutine_threadsafe(gethist(mychannel, before), loop=self.client.loop)
+        future = asyncio.run_coroutine_threadsafe(
+            gethist(mychannel, before), loop=self.discord_client.loop
+        )
         return future.result(timeout=None)

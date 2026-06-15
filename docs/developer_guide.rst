@@ -23,37 +23,37 @@ The Discord identity system doesn't map directly to that of errbots.  The below 
         ``discriminator :str:``, "The user's discriminator. This is given when the username has conflicts."
         ``bot :bool:``, "Specifies if the user is a bot account.",         ``nick :str:``, "a backend specific nick returning the nickname of this person if available."
         ``system :bool:``, "Specifies if the user is a system user (i.e. represents Discord officially).", ``aclattr :str:``, "returns the unique identifier that will be used for ACL matches."
-        ``??``, "??", ``fullname :str:``, "the fullname of this user if available."
-        ``??``, "??", ``email :str:``, "the email of this user if available."
+        ``display_name :str:``, "The user's display name or username.", ``fullname :str:``, "the fullname of this user if available."
+        ``N/A``, "Not provided by Discord API for bots.", ``email :str:``, "the email of this user if available."
 
 
 Room Occupant Class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
    .. csv-table:: Class attributes
-        :header: "Discord ``??``", "Description", "Errbot ``RoomOccupant``", "Description"
+        :header: "Discord ``Member``", "Description", "Errbot ``RoomOccupant``", "Description"
         :widths: 10, 20, 10, 20
 
-        ``??``, "??", ``room :any:``, "the fullname of this user if available."
+        ``guild :Guild:``, "The guild the member belongs to.", ``room :any:``, "The DiscordRoom this occupant is in."
 
 
 Room Class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
    .. csv-table:: Class attributes
-        :header: "Discord ``??``", "Description", "Errbot ``Room``", "Description"
+        :header: "Discord ``TextChannel``", "Description", "Errbot ``Room``", "Description"
         :widths: 10, 20, 10, 20
 
-        ``??``, "??", ``join()``, "If the room does not exist yet, this will automatically call `create` on it first."
-        ``??``, "??", ``leave()``, "Leave the room."
-        ``??``, "??", ``create()``, "Create the room or do nothing if it already exists."
-        ``??``, "??", ``destroy()``, "Destroy the room or do nothing if it doesn't exists."
-        ``??``, "??", ``aclattr :str:``, "returns the unique identifier that will be used for ACL matches."
-        ``??``, "??", ``exists :bool:``, "Returns ``True`` if the room exists, `False` otherwise."
-        ``??``, "??", ``joined :bool:``, "Returns ``True`` if the room has been joined, `False` otherwise."
-        ``??``, "??", ``topic :bool:``, "Returns the topic (a string) if one is set, ``None`` if no topic has been set at all."
-        ``??``, "??", ``occupants :list:``, "Returns a list of occupant identities."
-        ``??``, "??", ``invite()``, "Invite one or more people into the room."
+        ``N/A``, "Channels are already joined.", ``join()``, "If the room does not exist yet, this will automatically call `create` on it first."
+        ``N/A``, "Bots cannot 'leave' a text channel without being kicked.", ``leave()``, "Leave the room."
+        ``create_text_channel()``, "Creates a new channel in a guild.", ``create()``, "Create the room or do nothing if it already exists."
+        ``delete()``, "Deletes the channel.", ``destroy()``, "Destroy the room or do nothing if it doesn't exists."
+        ``id :int:``, "The unique channel ID.", ``aclattr :str:``, "returns the unique identifier that will be used for ACL matches."
+        ``get_channel()``, "Check if channel object exists.", ``exists :bool:``, "Returns ``True`` if the room exists, `False` otherwise."
+        ``N/A``, "Assumed True if bot is in server.", ``joined :bool:``, "Returns ``True`` if the room has been joined, `False` otherwise."
+        ``topic :str:``, "The channel topic/description.", ``topic :bool:``, "Returns the topic (a string) if one is set, ``None`` if no topic has been set at all."
+        ``members :list:``, "List of members with access to the channel.", ``occupants :list:``, "Returns a list of occupant identities."
+        ``set_permissions()``, "Update channel overwrites.", ``invite()``, "Invite one or more people into the room."
 
 
 Identification

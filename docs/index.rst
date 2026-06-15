@@ -15,6 +15,7 @@ The ``err-backend-discord`` backend lets you connect to the `Discord <https://di
 
    installation.rst
    configuration.rst
+   bot_creation.rst
    user_guide.rst
    developer_guide.rst
 

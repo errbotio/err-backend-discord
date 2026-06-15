@@ -1,10 +1,10 @@
+import asyncio
 import logging
 import sys
 from typing import List, Optional, Union
 
-from errbot.backends.base import Room, RoomError, RoomOccupant
-
 from discordlib.person import DiscordPerson, DiscordSender
+from errbot.backends.base import Room, RoomError, RoomOccupant
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class DiscordRoom(Room, DiscordSender):
 
     @classmethod
     def from_id(cls, channel_id):
-        channel = DiscordRoom.client.get_channel(channel_id)
+        channel = DiscordRoom.discord_client.get_channel(channel_id)
 
         if channel is None:
             raise ValueError(f"Channel id:{channel_id} doesn't exist!")
@@ -43,24 +43,33 @@ class DiscordRoom(Room, DiscordSender):
         :param channel_id:
         """
         self.discord_channel = None
-        if channel_id:
-            self._channel_id = int(channel_id)
-            self.discord_channel = DiscordRoom.client.get_channel(self._channel_id)
-        elif guild_id and channel_name:
-            guild = DiscordRoom.client.get_guild(int(guild_id))
+        self._channel_id = int(channel_id) if channel_id else None
+        self._guild_id = int(guild_id) if guild_id else None
+        self._channel_name = channel_name
+
+        if self._channel_id:
+            self.discord_channel = DiscordRoom.discord_client.get_channel(self._channel_id)
+            if self.discord_channel:
+                self._channel_name = self.discord_channel.name
+                self._guild_id = self.discord_channel.guild.id
+        elif self._guild_id and self._channel_name:
+            guild = DiscordRoom.discord_client.get_guild(self._guild_id)
             if guild:
-                channel = [channel for channel in guild.channels if channel_name == channel.name]
-                if len(channel) == 0:
-                    ValueError(f"Failed to find channel {channel_name} in guild {guild.name}")
-                if len(channel) > 1:
-                    ValueError(
-                        f"More than one channel matched {channel_name} in guild {guild.name}"
+                channels = [c for c in guild.channels if self._channel_name == c.name]
+                if len(channels) == 0:
+                    raise ValueError(
+                        f"Failed to find channel {self._channel_name} in guild {guild.name}"
                     )
-                self.discord_channel = channel[0]
+                if len(channels) > 1:
+                    raise ValueError(
+                        f"More than one channel matched {self._channel_name} in guild {guild.name}"
+                    )
+                self.discord_channel = channels[0]
+                self._channel_id = self.discord_channel.id
             else:
-                raise ValueError(f"Failed to get guild id {guild_id}")
+                raise ValueError(f"Failed to get guild id {self._guild_id}")
         else:
-            raise ValueError("A channel id or channel name + guild id is required for a Room.")
+            raise ValueError("A name or channel id + guild id is required to create a Room.")
 
     def get_discord_object(self):
         return self.discord_channel
@@ -74,7 +83,7 @@ class DiscordRoom(Room, DiscordSender):
         """
         matching = [
             channel
-            for channel in DiscordRoom.client.get_all_channels()
+            for channel in DiscordRoom.discord_client.get_all_channels()
             if self._channel_name == channel.name
             and channel.guild.id == self._guild_id
             and isinstance(channel, discord.TextChannel)
@@ -104,8 +113,8 @@ class DiscordRoom(Room, DiscordSender):
                 raise RuntimeError("Can't invite non Discord Users")
 
             asyncio.run_coroutine_threadsafe(
-                self.discord_channel.set_permissions(identifier.discord_user(), read_messages=True),
-                loop=DiscordRoom.client.loop,
+                self.discord_channel.set_permissions(identifier.discord_user, read_messages=True),
+                loop=DiscordRoom.discord_client.loop,
             )
 
     @property
@@ -122,7 +131,7 @@ class DiscordRoom(Room, DiscordSender):
         log.error("Not implemented")
 
     async def create_room(self):
-        guild = DiscordRoom.client.get_guild(self._guild_id)
+        guild = DiscordRoom.discord_client.get_guild(self._guild_id)
 
         channel = await guild.create_text_channel(self._channel_name)
 
@@ -135,9 +144,9 @@ class DiscordRoom(Room, DiscordSender):
             log.warning(f"Tried to create {self._channel_name} which already exists.")
             raise RoomError("Room exists")
 
-        asyncio.run_coroutine_threadsafe(self.create_room(), loop=DiscordRoom.client.loop).result(
-            timeout=5
-        )
+        asyncio.run_coroutine_threadsafe(
+            self.create_room(), loop=DiscordRoom.discord_client.loop
+        ).result(timeout=5)
 
     def destroy(self) -> None:
         if not self.exists:
@@ -146,7 +155,7 @@ class DiscordRoom(Room, DiscordSender):
 
         asyncio.run_coroutine_threadsafe(
             self.discord_channel.delete(reason="Bot deletion command"),
-            loop=DiscordRoom.client.loop,
+            loop=DiscordRoom.discord_client.loop,
         ).result(timeout=5)
 
     def join(self, username: str = None, password: str = None) -> None:
@@ -187,7 +196,7 @@ class DiscordRoom(Room, DiscordSender):
     def exists(self) -> bool:
         return None not in [
             self._channel_id,
-            DiscordRoom.client.get_channel(self._channel_id),
+            DiscordRoom.discord_client.get_channel(self._channel_id),
         ]
 
     @property
@@ -208,7 +217,7 @@ class DiscordRoom(Room, DiscordSender):
         if self._channel_id is None:
             return self._channel_name
         else:
-            self._channel_name = DiscordRoom.client.get_channel(self._channel_id).name
+            self._channel_name = DiscordRoom.discord_client.get_channel(self._channel_id).name
             return self._channel_name
 
     @property
@@ -273,7 +282,7 @@ class DiscordCategory(DiscordRoom):
         """
         matching = [
             channel
-            for channel in DiscordCategory.client.get_all_channels()
+            for channel in DiscordCategory.discord_client.get_all_channels()
             if self._channel_name == channel.name
             and channel.guild.id == self._guild_id
             and isinstance(channel, discord.CategoryChannel)
@@ -297,13 +306,13 @@ class DiscordCategory(DiscordRoom):
             raise RuntimeError("Category is not a discord category object")
 
         text_channel = asyncio.run_coroutine_threadsafe(
-            category.create_text_channel(name), loop=DiscordCategory.client.loop
+            category.create_text_channel(name), loop=DiscordCategory.discord_client.loop
         ).result(timeout=5)
 
         return DiscordRoom.from_id(text_channel.id)
 
     async def create_room(self):
-        guild = DiscordCategory.client.get_guild(self._guild_id)
+        guild = DiscordCategory.discord_client.get_guild(self._guild_id)
 
         channel = await guild.create_category(self._channel_name)
 

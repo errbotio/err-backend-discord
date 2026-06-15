@@ -37,8 +37,8 @@ Intents are used to inform Discord what events errbot would like to receive.  If
 
         "1", "guilds"
         "2", "members"
-        "4", "bans"
-        "8", "emojis"
+        "4", "moderation"
+        "8", "expressions"
         "16", "integrations"
         "32", "webhooks"
         "64", "invites"
@@ -52,13 +52,14 @@ Intents are used to inform Discord what events errbot would like to receive.  If
         "16384", "dm_typing"
         "32768", "message_content"
         "65536", "guild_scheduled_events"
-        "3145728", "auto_moderation"
         "1048576", "auto_moderation_configuration"
         "2097152", "auto_moderation_execution"
+        "16777216", "guild_polls"
+        "33554432", "dm_polls"
 
 Errbot configuration accepts intents as additive or subtractive values.  If an intent is prefixed with ``-`` it indicates the intent should be disabled.  Unprefixed intents are considered additive and will be enabled:
 
-**List form** Intents can be expressed as a list of integers, list of strings or a mixture.  e.g. to enable `guilds`, `bans` and `integrations`:
+**List form** Intents can be expressed as a list of integers, list of strings or a mixture.  e.g. to enable `guilds`, `moderation` and `integrations`:
 ::
 
     BOT_IDENTITY = {
@@ -67,7 +68,7 @@ Errbot configuration accepts intents as additive or subtractive values.  If an i
     }
     BOT_IDENTITY = {
         "initial_intents": "none",
-        "intents": ["guilds", "bans", 16]
+        "intents": ["guilds", "moderation", 16]
     }
     BOT_IDENTITY = {
         "initial_intents": "none",
@@ -94,13 +95,23 @@ The inverse can be applied by setting all intents and applying ``-20480``
         "intents": -20480
     }
 
-
 Discord
-------------------------------------------------------------------------
+-------
 
-Discord API terms of use can evolve at any point in time.  Fortunately, the team that provides the ``discord`` module does a great job at insulating errbot
-from a lot of these subtle changes.  However, there are changes that are significant enough to require extra steps to get errbot to work as desired with discord.
+Discord API terms of use can evolve at any point in time.
+Fortunately, the team that provides the ``discord`` module does a great job at insulating errbot
+from a lot of these subtle changes. However, there are changes that are significant enough to require extra steps to get errbot to work as desired with discord.
 
+Differences Between Permissions and Intents
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is important to distinguish between **Permissions** and **Intents**:
+
+*   **Permissions** define what actions your bot can take *inside* a Discord server (e.g., Send Messages, Attach Files). These are used when generating the invite link (e.g., ``permissions=0``).
+*   **Intents** define what events Discord sends *to* your bot over the network (e.g., "someone sent a message", "someone joined a server"). These are what you configure in ``BOT_IDENTITY``.
+
+.. warning::
+    Do not use the **Permissions Integer** (e.g., a large number like ``377957420096``) in the ``intents`` field of your config. This will cause the bot to fail with a connection error (4013).
 
 Gateway Intents
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,5 +132,5 @@ To create a bot user account for use with errbot, you can see the required permi
 
 Discord provides a `tool <https://discordapi.com/permissions.html>`_ that can be used to generate a proper invitation link.
 
-The reactiflux community have written a quick start guide to `creating a discord bot and getting a token <https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-a-token>`_
+The reactiflux community have written a quick start guide to `creating a discord bot and getting a token <https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-a-token>`_. A local version of this guide can be found at :ref:`bot_creation`.
 

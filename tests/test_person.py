@@ -1,102 +1,63 @@
-import json
 import logging
-import os
-import sys
-
-from errbot.backends.base import RoomDoesNotExistError
+import re
 
 import pytest
-from mock import MagicMock
-
 from discordlib.person import DiscordPerson
+from mock import MagicMock, patch
 
 log = logging.getLogger(__name__)
 
 
-@pytest.fixture
-def person():
-    return MagicMock()
+@pytest.fixture(autouse=True)
+def mock_discord_client():
+    with patch("discordlib.person.DiscordPerson.discord_client", MagicMock()) as mock:
+        yield mock
 
 
 def test_wrong_userid():
-    raise NotImplementedError
+    with pytest.raises(ValueError):
+        DiscordPerson(user_id="123")
 
 
 def test_create_person_without_args():
-    DiscordPerson(user_id="0123456789012345678")
+    with pytest.raises(ValueError):
+        DiscordPerson()
 
 
 def test_create_person_with_username_only():
-    DiscordPerson(username="someone")
+    with pytest.raises(LookupError):
+        DiscordPerson(username="someone")
 
 
 def test_create_person_with_discriminator_only():
-    DiscordPerson(discriminator="#1234")
+    with pytest.raises(ValueError):
+        DiscordPerson(discriminator="#1234")
 
 
-def test_create_person_with_id():
-    DiscordPerson(user_id="0123456789012345678")
+def test_create_person_with_id(mock_discord_client):
+    mock_user = MagicMock()
+    mock_user.id = 123456789012345678
+    mock_discord_client.get_user.return_value = mock_user
+    person = DiscordPerson(user_id="123456789012345678")
+    assert person.id == 123456789012345678
 
 
-def test_create_person_username_and_discriminator():
-    DiscordPerson(username="someone", discriminator="1234")
+def test_create_person_with_17_digit_id(mock_discord_client):
+    mock_user = MagicMock()
+    mock_user.id = 12345678901234567
+    mock_discord_client.get_user.return_value = mock_user
+    person = DiscordPerson(user_id="12345678901234567")
+    assert person.id == 12345678901234567
 
 
-def todo_wrong_channelid():
-    raise NotImplementedError
+def test_create_person_username_and_discriminator(mock_discord_client):
+    mock_user = MagicMock()
+    mock_user.id = 123456789012345678
+    mock_user.name = "someone"
+    mock_user.discriminator = "1234"
 
-
-def todo_username():
-    raise NotImplementedError
-
-
-def todo_username_not_found():
-    raise NotImplementedError
-
-
-def todo_fullname():
-    raise NotImplementedError
-
-
-def todo_fullname_not_found():
-    raise NotImplementedError
-
-
-def todo_email():
-    raise NotImplementedError
-
-
-def todo_email_not_found():
-    raise NotImplementedError
-
-
-def todo_channelname():
-    raise NotImplementedError
-
-
-def todo_channelname_channel_not_found():
-    raise NotImplementedError
-
-
-def todo_domain():
-    raise NotImplementedError
-
-
-def todo_aclattr():
-    raise NotImplementedError
-
-
-def todo_person():
-    raise NotImplementedError
-
-
-def todo_to_string():
-    raise NotImplementedError
-
-
-def todo_equal():
-    raise NotImplementedError
-
-
-def todo_hash():
-    raise NotImplementedError
+    with patch.object(DiscordPerson, "resolve_username", return_value=mock_user):
+        mock_discord_client.get_user.return_value = mock_user
+        person = DiscordPerson(username="someone", discriminator="1234")
+        assert person.id == 123456789012345678
+        assert person.username == "someone"
