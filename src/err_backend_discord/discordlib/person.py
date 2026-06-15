@@ -25,7 +25,7 @@ class DiscordSender(ABC, discord.abc.Snowflake):
     with all classes.  It is populated when the backend is initialised.
     """
 
-    discord_client = None
+    client = None
 
     @abstractmethod
     async def send(self, content: str = None, embed: discord.Embed = None):
@@ -39,7 +39,7 @@ class DiscordSender(ABC, discord.abc.Snowflake):
 class DiscordPerson(Person, DiscordSender):
     @classmethod
     def resolve_username(cls, username: str, discriminator: str) -> str:
-        for m in DiscordPerson.discord_client.get_all_members():
+        for m in DiscordPerson.client.get_all_members():
             if m.name == username:
                 # Discord dropped discriminators for user accounts but kept them for bot accounts.
                 if m.discriminator in ["0", discriminator]:
@@ -74,7 +74,7 @@ class DiscordPerson(Person, DiscordSender):
             else:
                 raise ValueError("Username/discrimator pair or user id not provided.")
 
-        self.discord_user = DiscordPerson.discord_client.get_user(self._user_id)
+        self.discord_user = DiscordPerson.client.get_user(self._user_id)
         if self.discord_user is None:
             raise ValueError(f"Failed to get the user {self._user_id}")
 

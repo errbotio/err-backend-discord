@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 @pytest.fixture
 def discord_room():
     room = DiscordRoom
-    setattr(room, "discord_client", MagicMock())
+    setattr(room, "client", MagicMock())
     return room
 
 
@@ -43,7 +43,7 @@ def test_create_room_with_name_and_guild_id(discord_room):
     mock_channel.name = "#testing_ground"
     mock_channel.id = 1234567890132456789
     mock_guild.channels = [mock_channel]
-    DiscordRoom.discord_client.get_guild.return_value = mock_guild
+    DiscordRoom.client.get_guild.return_value = mock_guild
 
     room = discord_room(channel_name="#testing_ground", guild_id="2345678901234567890")
     assert room.id == 1234567890132456789
