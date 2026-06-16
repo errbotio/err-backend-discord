@@ -38,5 +38,8 @@ discord = "err_backend_discord:DiscordBackend"
 # available as beta since setuptools version 61.0.0
 include-package-data = true
 
+[tool.setuptools.package-data]
+err_backend_discord = ["*.plug"]
+
 [tool.black]
 line-length = 100

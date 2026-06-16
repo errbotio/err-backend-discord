@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 
 from errbot.backends.base import Room, RoomError, RoomOccupant
 
-from .person import DiscordPerson, DiscordSender
+from err_backend_discord.discordlib.person import DiscordPerson, DiscordSender
 
 log = logging.getLogger(__name__)
 

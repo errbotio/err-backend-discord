@@ -5,8 +5,12 @@ import sys
 from errbot.backends.base import AWAY, DND, OFFLINE, ONLINE, Message, Person, Presence
 from errbot.core import ErrBot
 
-from .discordlib.person import DiscordPerson, DiscordSender
-from .discordlib.room import DiscordCategory, DiscordRoom, DiscordRoomOccupant
+from err_backend_discord.discordlib.person import DiscordPerson, DiscordSender
+from err_backend_discord.discordlib.room import (
+    DiscordCategory,
+    DiscordRoom,
+    DiscordRoomOccupant,
+)
 
 log = logging.getLogger("err_backend_discord")
 
