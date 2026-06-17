@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "err-backend-discord"
-version = "4.0.3"
+version = "4.0.4"
 authors = [{ name="Errbot maintainers", email="noreply@errbot.io" }]
 keywords = [
     "errbot",
@@ -27,6 +27,9 @@ dependencies = [
     "discord.py==2.7.1",
 ]
 
+[project.entry-points."errbot.backend_plugins"]
+discord = "err_backend_discord:DiscordBackend"
+
 [project.urls]
 "Homepage" = "https://err-backend-discord.readthedocs.io"
 "Bug Tracker" = "https://github.com/errbotio/err-backend-discord/issues"
@@ -34,6 +37,9 @@ dependencies = [
 [tool.setuptools]
 # available as beta since setuptools version 61.0.0
 include-package-data = true
+
+[tool.setuptools.package-data]
+err_backend_discord = ["*.plug"]
 
 [tool.black]
 line-length = 100

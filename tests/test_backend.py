@@ -1,4 +1,3 @@
-import importlib  # Use importlib because of "-" in module name.
 import json
 import logging
 import os
@@ -7,15 +6,16 @@ import sys
 from tempfile import mkdtemp
 
 import pytest
-from discordlib.room import DiscordRoom
 from errbot.backends.base import Message
 from errbot.bootstrap import bot_config_defaults
 from mock import MagicMock
 
+from err_backend_discord.discordlib.room import DiscordRoom
+
 log = logging.getLogger(__name__)
 
 try:
-    DiscordBackend = importlib.import_module("err-backend-discord").DiscordBackend
+    from err_backend_discord import DiscordBackend
 
     class MockedDiscordBackend(DiscordBackend):
         def __init__(self, *args, **kwargs):

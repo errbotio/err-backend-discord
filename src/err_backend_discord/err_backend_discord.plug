@@ -1,6 +1,6 @@
 [Core]
 Name = Discord
-Module = err-backend-discord
+Module = err_backend_discord
 
 [Documentation]
 Description = Discord backend for Errbot.
