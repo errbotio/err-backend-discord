@@ -8,8 +8,8 @@ from errbot.backends.base import Person
 
 log = logging.getLogger(__name__)
 
-# Discord uses 17 or more digits for user, channel and server (guild) ids.
-RE_DISCORD_ID = re.compile(r"^[0-9]{17,21}$")
+# Discord Snowflake IDs are 64-bit unsigned integers, which can be 1 to 20 digits long.
+RE_DISCORD_ID = re.compile(r"^[0-9]{1,20}$")
 
 try:
     import discord

@@ -17,7 +17,7 @@ def mock_client():
 
 def test_wrong_userid():
     with pytest.raises(ValueError):
-        DiscordPerson(user_id="123")
+        DiscordPerson(user_id="abc")
 
 
 def test_create_person_without_args():
@@ -35,20 +35,22 @@ def test_create_person_with_discriminator_only():
         DiscordPerson(discriminator="#1234")
 
 
-def test_create_person_with_id(mock_client):
+@pytest.mark.parametrize(
+    "id_val",
+    [
+        123456789012345,  # 15 digits
+        1234567890123456,  # 16 digits
+        12345678901234567,  # 17 digits
+        123456789012345678,  # 18 digits
+        12345678901234567890,  # 20 digits
+    ],
+)
+def test_create_person_with_valid_id(mock_client, id_val):
     mock_user = MagicMock()
-    mock_user.id = 123456789012345678
+    mock_user.id = id_val
     mock_client.get_user.return_value = mock_user
-    person = DiscordPerson(user_id="123456789012345678")
-    assert person.id == 123456789012345678
-
-
-def test_create_person_with_17_digit_id(mock_client):
-    mock_user = MagicMock()
-    mock_user.id = 12345678901234567
-    mock_client.get_user.return_value = mock_user
-    person = DiscordPerson(user_id="12345678901234567")
-    assert person.id == 12345678901234567
+    person = DiscordPerson(user_id=str(id_val))
+    assert person.id == id_val
 
 
 def test_create_person_username_and_discriminator(mock_client):
