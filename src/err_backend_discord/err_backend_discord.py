@@ -427,6 +427,8 @@ class DiscordBackend(ErrBot):
             if "#" in text:
                 user, discriminator = text.split("#", 1)
                 return DiscordPerson(username=user, discriminator=discriminator)
+            else:
+                return DiscordPerson(username=text)
 
         raise ValueError(f"Invalid representation {text}")
 
