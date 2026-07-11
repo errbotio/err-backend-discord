@@ -53,8 +53,38 @@ def backend():
     return discord_backend
 
 
-def todo_build_identifier(backend):
-    raise NotImplementedError
+def test_build_identifier(backend):
+    with (
+        patch("err_backend_discord.err_backend_discord.DiscordPerson") as mock_person,
+        patch("err_backend_discord.err_backend_discord.DiscordRoom") as mock_room,
+    ):
+        # Test userid mention format: <@userid>
+        backend.build_identifier("<@1234567890>")
+        mock_person.assert_called_with(user_id="1234567890")
+
+        # Test channelid mention format: <#channelid>
+        backend.build_identifier("<#9876543210>")
+        mock_room.assert_called_with(channel_id="9876543210")
+
+        # Test unsupported identification
+        with pytest.raises(ValueError):
+            backend.build_identifier("<invalid>")
+
+        # Test raw text channel general format: #channel
+        backend.build_identifier("#general")
+        mock_room.assert_called_with("general")
+
+        # Test channel on specific guild format: #channel@guild_id
+        backend.build_identifier("#general@1234")
+        mock_room.assert_called_with("general", "1234")
+
+        # Test username with discriminator: @user#discriminator
+        backend.build_identifier("@someone#1234")
+        mock_person.assert_called_with(username="someone", discriminator="1234")
+
+        # Test username without discriminator: @user
+        backend.build_identifier("@someone")
+        mock_person.assert_called_with(username="someone")
 
 
 def todo_extract_identifiers(backend):
