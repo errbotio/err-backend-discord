@@ -47,8 +47,7 @@ class DiscordBackend(ErrBot):
 
         if not self.token:
             log.fatal(
-                "You need to set a token entry in the BOT_IDENTITY"
-                " setting of your configuration."
+                "You need to set a token entry in the BOT_IDENTITY setting of your configuration."
             )
             sys.exit(1)
 

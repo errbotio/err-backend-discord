@@ -1,16 +1,11 @@
-import json
 import logging
 import os
-import pdb
 import sys
 from tempfile import mkdtemp
 
 import pytest
-from errbot.backends.base import Message
 from errbot.bootstrap import bot_config_defaults
-from mock import MagicMock
-
-from err_backend_discord.discordlib.room import DiscordRoom
+from mock import MagicMock, patch
 
 log = logging.getLogger(__name__)
 
