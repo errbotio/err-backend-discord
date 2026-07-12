@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-from typing import List, Optional, Union
+from typing import List
 
 from errbot.backends.base import Room, RoomError, RoomOccupant
 

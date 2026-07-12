@@ -43,15 +43,10 @@ jobs:
       run: |
         tox -e dist-check
 
-    - name: Codestyle
+    - name: Lint (Ruff)
       if: matrix.python-version == 3.12
       run: |
-        tox -e codestyle
-
-    - name: Lint - sort
-      if: matrix.python-version == 3.12
-      run: |
-        tox -e sort
+        tox -e lint
 
     - name: Security
       if: matrix.python-version == 3.12

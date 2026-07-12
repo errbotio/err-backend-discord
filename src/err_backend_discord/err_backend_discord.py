@@ -47,8 +47,7 @@ class DiscordBackend(ErrBot):
 
         if not self.token:
             log.fatal(
-                "You need to set a token entry in the BOT_IDENTITY"
-                " setting of your configuration."
+                "You need to set a token entry in the BOT_IDENTITY setting of your configuration."
             )
             sys.exit(1)
 
@@ -427,6 +426,8 @@ class DiscordBackend(ErrBot):
             if "#" in text:
                 user, discriminator = text.split("#", 1)
                 return DiscordPerson(username=user, discriminator=discriminator)
+            else:
+                return DiscordPerson(username=text)
 
         raise ValueError(f"Invalid representation {text}")
 
